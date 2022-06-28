@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - tracking_location (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - tracking_location (from `.symlinks/plugins/tracking_location/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  tracking_location:
+    :path: ".symlinks/plugins/tracking_location/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 50d75fe2f02b26cc09d224853bb45737f8b3214a
+  tracking_location: 1797ed865f2344e52ab5879031c951321baccca2
+
+PODFILE CHECKSUM: aafe91acc616949ddb318b77800a7f51bffa2a4c
+
+COCOAPODS: 1.10.2
