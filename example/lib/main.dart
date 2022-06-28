@@ -24,11 +24,15 @@ class _MyAppState extends State<MyApp> {
   Future<void> init() async {
     int result = await _trackingLocationPlugin.start();
     if(result == 1) {
-      _trackingLocationPlugin.listen();
+      _trackingLocationPlugin.listen(getLocationUpdate);
     }
     setState(() {
       status = result;
     });
+  }
+
+  void getLocationUpdate(dynamic value) {
+    print(value);
   }
 
   @override

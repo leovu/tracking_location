@@ -1,13 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class TrackingLocation {
   static MethodChannel channel = const MethodChannel("tracking_location");
-  listen() {
+  listen(Function(dynamic) action) {
     channel.setMethodCallHandler((call) async {
       if (call.method == "update_location") {
-        print(call.arguments);
+        if (kDebugMode) print("Get location update");
+        action(call.arguments);
       } else {
-        print("Method not implemented: ${call.method}");
+        if (kDebugMode) print("Method not implemented: ${call.method}");
       }
     });
   }
