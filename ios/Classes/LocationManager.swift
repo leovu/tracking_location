@@ -37,13 +37,79 @@ class LocationManger:NSObject {
     func start() {
         ForegroundLocationManager.instance.start()
         BackgroundLocationManager.instance.start()
+        TerminatedLocationManager.instance.start()
         UserLocation.sharedInstance.start()
     }
     func stop() {
         ForegroundLocationManager.instance.stop()
         BackgroundLocationManager.instance.stop()
+        TerminatedLocationManager.instance.stop()
         UserLocation.sharedInstance.stop()
     }
+}
+
+class TerminatedLocationManager :NSObject {
+    static let instance = TerminatedLocationManager()
+    static let BACKGROUND_TIMER = 150.0 // restart location manager every 150 seconds
+    static let UPDATE_SERVER_INTERVAL = 1
+    let locationManager = CLLocationManager()
+    private override init(){
+        super.init()
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+        locationManager.activityType = .other;
+        locationManager.distanceFilter = kCLDistanceFilterNone;
+        if #available(iOS 9, *){
+            locationManager.allowsBackgroundLocationUpdates = true
+        }
+        locationManager.startMonitoringSignificantLocationChanges()
+        NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
+    }
+    @objc func applicationEnterTerminated(){
+        start()
+    }
+    func start(){
+        if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
+            locationManager.startMonitoringSignificantLocationChanges()
+        } else {
+            locationManager.requestAlwaysAuthorization()
+        }
+    }
+    func stop(){
+        locationManager.stopMonitoringSignificantLocationChanges()
+    }
+    func sendLocationToServer(location:CLLocation){
+        UserLocation.sharedInstance.location = location
+        UserLocation.sharedInstance.updateLocation()
+    }
+    func beginNewTerminatedTask(){
+        if(LocationUpdate.shared.isStop)
+        {
+           return
+        }
+        start()
+    }
+}
+
+extension TerminatedLocationManager : CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        beginNewTerminatedTask()
+    }
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        switch status {
+        case CLAuthorizationStatus.restricted: break
+        case CLAuthorizationStatus.denied: break
+        case CLAuthorizationStatus.notDetermined: break
+        default:
+            locationManager.startUpdatingLocation()
+        }
+    }
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else {return}
+        sendLocationToServer(location: location)
+        locationManager.startMonitoringSignificantLocationChanges()
+    }
+    
 }
 
 class BackgroundLocationManager :NSObject {
