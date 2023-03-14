@@ -62,6 +62,9 @@ class TerminatedLocationManager :NSObject {
         if #available(iOS 9, *){
             locationManager.allowsBackgroundLocationUpdates = true
         }
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.activityType = .otherNavigation
         locationManager.startMonitoringSignificantLocationChanges()
         NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
     }
@@ -92,6 +95,18 @@ class TerminatedLocationManager :NSObject {
 }
 
 extension TerminatedLocationManager : CLLocationManagerDelegate {
+    func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String ) {
+        if CLLocationManager.authorizationStatus() == .authorizedAlways {
+            if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
+                let maxDistance = 100.0
+                let region = CLCircularRegion(center: center,
+                                              radius: maxDistance, identifier: identifier)
+                region.notifyOnEntry = true
+                region.notifyOnExit = false
+                locationManager.startMonitoring(for: region)
+            }
+        }
+    }
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         beginNewTerminatedTask()
     }
@@ -101,13 +116,25 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
         case CLAuthorizationStatus.denied: break
         case CLAuthorizationStatus.notDetermined: break
         default:
-            locationManager.startUpdatingLocation()
+            locationManager.startMonitoringSignificantLocationChanges()
         }
     }
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else {return}
         sendLocationToServer(location: location)
-        locationManager.startMonitoringSignificantLocationChanges()
+        monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: location.coordinate.latitude,
+                                                               longitude: location.coordinate.longitude), identifier: "\(location.coordinate.latitude)_\(location.coordinate.longitude)")
+    }
+    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        if let region = region as? CLCircularRegion {
+            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
+        }
+    }
+    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
+        if let region = region as? CLCircularRegion {
+            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
+            locationManager.stopMonitoring(for: region)
+        }
     }
     
 }
