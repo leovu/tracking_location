@@ -409,17 +409,18 @@ final class UserLocation {
     func updateLocation() {
         self.lastTime = Date()
         self.lastLocation = self.location
-        LocationTracking.shared.updateCurrentLocation(lat: self.location!.coordinate.latitude, lng: self.location!.coordinate.longitude)
+        LocationTracking.shared.updateCurrentLocation(lat: self.location!.coordinate.latitude, lng: self.location!.coordinate.longitude, speed: Double(self.location!.speed))
     }
 }
 
 class LocationTracking {
     static let shared = LocationTracking()
-    func updateCurrentLocation(lat:Double,lng:Double) {
+    func updateCurrentLocation(lat:Double,lng:Double,speed:Double) {
         DispatchQueue.global(qos: .background).async {
             LocationUpdate.shared.methodChannel?.invokeMethod("update_location", arguments: [
                 "lat":lat,
-                "lng":lng
+                "lng":lng,
+                "speed":speed
             ])
         }
     }

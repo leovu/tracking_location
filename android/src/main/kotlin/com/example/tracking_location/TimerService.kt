@@ -51,7 +51,8 @@ class TimerService : Service() {
             override fun gotLocation(location: Location?) {
                 val lat = location!!.latitude
                 val lng = location.longitude
-                val map = mapOf("lat" to lat, "lng" to lng)
+                val speed = location.speed
+                val map = mapOf("lat" to lat, "lng" to lng,"speed" to speed)
                 TrackingUpdate.channel?.invokeMethod("update_location", map)
             }
         }
