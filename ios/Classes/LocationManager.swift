@@ -92,7 +92,7 @@ class TerminatedLocationManager :NSObject {
                               "time": formatter.string(from: Date()),
                               "speed": location.speed
                 ] as Dictionary<String, Any>
-                var request = URLRequest(url: URL(string: "http://localhost:8080/api/1/login")!)
+                var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
                 request.httpMethod = "POST"
                 request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
                 request.addValue("application/json", forHTTPHeaderField: "Content-Type")
