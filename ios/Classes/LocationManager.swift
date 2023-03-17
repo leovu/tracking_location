@@ -50,8 +50,6 @@ class LocationManger:NSObject {
 
 class TerminatedLocationManager :NSObject {
     static let instance = TerminatedLocationManager()
-    static let BACKGROUND_TIMER = 150.0 // restart location manager every 150 seconds
-    static let UPDATE_SERVER_INTERVAL = 1
     let locationManager = CLLocationManager()
     private override init(){
         super.init()
@@ -98,7 +96,7 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
     func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String ) {
         if CLLocationManager.authorizationStatus() == .authorizedAlways {
             if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-                let maxDistance = 100.0
+                let maxDistance = 500.0
                 let region = CLCircularRegion(center: center,
                                               radius: maxDistance, identifier: identifier)
                 region.notifyOnEntry = true
@@ -117,6 +115,11 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
         case CLAuthorizationStatus.notDetermined: break
         default:
             locationManager.startMonitoringSignificantLocationChanges()
+        }
+    }
+    func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
+        if let region = region as? CLCircularRegion {
+            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
         }
     }
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
