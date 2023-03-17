@@ -80,8 +80,37 @@ class TerminatedLocationManager :NSObject {
         locationManager.stopMonitoringSignificantLocationChanges()
     }
     func sendLocationToServer(location:CLLocation){
-        UserLocation.sharedInstance.location = location
-        UserLocation.sharedInstance.updateLocation()
+        updateLocation(location: location)
+    }
+    func updateLocation(location:CLLocation) {
+        DispatchQueue.background(background: {
+            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                let params = ["lat":location.coordinate.latitude,
+                              "lng":location.coordinate.longitude,
+                              "time": formatter.string(from: Date()),
+                              "speed": location.speed
+                ] as Dictionary<String, Any>
+                var request = URLRequest(url: URL(string: "http://localhost:8080/api/1/login")!)
+                request.httpMethod = "POST"
+                request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                let session = URLSession.shared
+                let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                    print(response!)
+                    do {
+                        let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+                        print(json)
+                    } catch {
+                        print("error")
+                    }
+                })
+                task.resume()
+            }
+        }, completion:{})
+        
     }
     func beginNewTerminatedTask(){
         if(LocationUpdate.shared.isStop)
@@ -452,4 +481,17 @@ extension UIApplication {
         }
         return viewController
     }
+}
+extension DispatchQueue {
+    static func background(delay: Double = 0.0, background: (()->Void)? = nil, completion: (() -> Void)? = nil) {
+        DispatchQueue.global(qos: .background).async {
+            background?()
+            if let completion = completion {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: {
+                    completion()
+                })
+            }
+        }
+    }
+
 }
