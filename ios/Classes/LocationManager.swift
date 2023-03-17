@@ -61,7 +61,7 @@ class TerminatedLocationManager :NSObject {
             locationManager.allowsBackgroundLocationUpdates = true
         }
         locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.pausesLocationUpdatesAutomatically = true
         locationManager.activityType = .otherNavigation
         locationManager.startMonitoringSignificantLocationChanges()
         NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
