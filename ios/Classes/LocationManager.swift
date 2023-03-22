@@ -61,8 +61,7 @@ class TerminatedLocationManager :NSObject {
             locationManager.allowsBackgroundLocationUpdates = true
         }
         locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = true
-        locationManager.activityType = .otherNavigation
+        locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.startMonitoringSignificantLocationChanges()
         NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
     }
@@ -70,11 +69,13 @@ class TerminatedLocationManager :NSObject {
         start()
     }
     func start(){
-        if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
-            locationManager.startMonitoringSignificantLocationChanges()
-        } else {
-            locationManager.requestAlwaysAuthorization()
-        }
+        DispatchQueue.background(background: {
+            if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
+                locationManager.startMonitoringSignificantLocationChanges()
+            } else {
+                locationManager.requestAlwaysAuthorization()
+            }
+        }, completion:{})
     }
     func stop(){
         locationManager.stopMonitoringSignificantLocationChanges()
@@ -83,33 +84,31 @@ class TerminatedLocationManager :NSObject {
         updateLocation(location: location)
     }
     func updateLocation(location:CLLocation) {
-        DispatchQueue.background(background: {
-            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                let params = ["lat":location.coordinate.latitude,
-                              "lng":location.coordinate.longitude,
-                              "time": formatter.string(from: Date()),
-                              "speed": location.speed
-                ] as Dictionary<String, Any>
-                var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
-                request.httpMethod = "POST"
-                request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                let session = URLSession.shared
-                let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                    print(response!)
-                    do {
-                        let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                        print(json)
-                    } catch {
-                        print("error")
-                    }
-                })
-                task.resume()
-            }
-        }, completion:{})
+        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            let params = ["lat":location.coordinate.latitude,
+                          "lng":location.coordinate.longitude,
+                          "time": formatter.string(from: Date()),
+                          "speed": location.speed
+            ] as Dictionary<String, Any>
+            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
+            request.httpMethod = "POST"
+            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let session = URLSession.shared
+            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                print(response!)
+                do {
+                    let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+                    print(json)
+                } catch {
+                    print("error")
+                }
+            })
+            task.resume()
+        }
         
     }
     func beginNewTerminatedTask(){
