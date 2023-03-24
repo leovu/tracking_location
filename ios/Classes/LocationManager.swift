@@ -71,9 +71,9 @@ class TerminatedLocationManager :NSObject {
     func start(){
         DispatchQueue.background(background: {
             if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
-                locationManager.startMonitoringSignificantLocationChanges()
+                self.locationManager.startMonitoringSignificantLocationChanges()
             } else {
-                locationManager.requestAlwaysAuthorization()
+                self.locationManager.requestAlwaysAuthorization()
             }
         }, completion:{})
     }
@@ -82,6 +82,8 @@ class TerminatedLocationManager :NSObject {
     }
     func sendLocationToServer(location:CLLocation){
         updateLocation(location: location)
+        UserLocation.sharedInstance.location = location
+        UserLocation.sharedInstance.updateLocation()
     }
     func updateLocation(location:CLLocation) {
         if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
@@ -124,7 +126,7 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
     func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String ) {
         if CLLocationManager.authorizationStatus() == .authorizedAlways {
             if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-                let maxDistance = 500.0
+                let maxDistance = 100.0
                 let region = CLCircularRegion(center: center,
                                               radius: maxDistance, identifier: identifier)
                 region.notifyOnEntry = true
