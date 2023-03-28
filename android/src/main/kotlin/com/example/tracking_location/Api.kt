@@ -5,7 +5,7 @@ import retrofit2.http.*
 
 interface Api {
     @JvmSuppressWildcards
-    @POST("worker/location")
+    @POST("children/tracking")
     fun sendLocation(
         @Body body: Map<String, Any>
     ): Call<ResponseModel>

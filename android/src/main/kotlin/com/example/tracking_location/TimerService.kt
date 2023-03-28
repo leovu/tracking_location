@@ -23,7 +23,7 @@ import java.util.*
 class TimerService : Service() {
 
     private val KEY_SHARE_PREFS = "FlutterSharedPreferences"
-    private val url: String = "http://dev.api.ggigroup.org/api/children/tracking"
+    private val url: String = "http://dev.api.ggigroup.org/api/"
     private var mTimer: Timer? = null
     private var intent: Intent? = null
     private val UPDATE_INTERVAL = (30000).toLong()
