@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -48,7 +49,21 @@ object TrackingUpdate {
     private fun getPendingIntent(): PendingIntent {
         val intent = Intent(context, GPSTrackerReceiver::class.java)
         intent.action = ACTION_PROCESS_UPDATES
-        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.getBroadcast(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        } else {
+            PendingIntent.getBroadcast(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
     }
 
     private fun destroyLocationRequest() {
