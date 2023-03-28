@@ -1,12 +1,19 @@
 package com.example.tracking_location
 
-import android.content.BroadcastReceiver
+import android.Manifest
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.os.Build
+import android.os.IBinder
+import android.os.Looper
 import android.util.Log
-import com.google.android.gms.location.LocationResult
+import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.*
+import com.google.android.gms.location.LocationRequest.*
 import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Response
@@ -14,32 +21,41 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.*
 
-class GPSTrackerReceiver: BroadcastReceiver() {
+class LocationService : Service() {
+
+    lateinit var mContext: Context
+
     private val KEY_SHARE_PREFS = "FlutterSharedPreferences"
     private val url: String = "http://dev.api.ggigroup.org/api/"
 
     private lateinit var mRefs: SharedPreferences
     private lateinit var token: String
 
-    private val ACTION_PROCESS_UPDATES = "com.google.android.c2dm.intent.LOCATION"
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val locationRequest: LocationRequest = create().apply {
+        interval = 3000
+        fastestInterval = 3000
+        priority = PRIORITY_BALANCED_POWER_ACCURACY
+        maxWaitTime = 5000
+    }
 
-    override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent != null) {
-            val action = intent.action
-            if (ACTION_PROCESS_UPDATES == action) {
-                val result = LocationResult.extractResult(intent)
-                if (result != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val locations = result.lastLocation
-                    getPreference(context)
+    private var locationCallback: LocationCallback = object : LocationCallback() {
+        override fun onLocationResult(locationResult: LocationResult) {
+            val locationList = locationResult.locations
+            if (locationList.isNotEmpty()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val location = locationList.last()
+                    getPreference(mContext)
                     try{
                         if (token != "") {
                             val now = LocalDateTime.now()
                             val map = mapOf(
-                            "lat" to locations.latitude,
-                            "lng" to locations.longitude,
-                            "time" to now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                            "speed" to locations.speed
+                                "lat" to location.latitude,
+                                "lng" to location.longitude,
+                                "time" to now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                                "speed" to location.speed
                             )
                             sendLocation(map)
 
@@ -87,5 +103,35 @@ class GPSTrackerReceiver: BroadcastReceiver() {
                 }
 
             })
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        mContext = this
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+            && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+
+            Toast.makeText(applicationContext, "Permission required", Toast.LENGTH_LONG).show()
+            return
+        }else{
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+        return START_STICKY
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 }
