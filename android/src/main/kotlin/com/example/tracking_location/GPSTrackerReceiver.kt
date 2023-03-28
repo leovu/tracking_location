@@ -25,10 +25,13 @@ class GPSTrackerReceiver: BroadcastReceiver() {
     private val ACTION_PROCESS_UPDATES = "com.google.android.c2dm.intent.LOCATION"
 
     override fun onReceive(context: Context?, intent: Intent?) {
+        Log.e("Send location url", "1")
         if (intent != null) {
             val action = intent.action
+            Log.e("Send location url", intent.action!!)
             if (ACTION_PROCESS_UPDATES == action) {
                 val result = LocationResult.extractResult(intent)
+                Log.e("Send location url", Build.VERSION.SDK_INT.toString())
                 if (result != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val locations = result.lastLocation
                     getPreference(context)

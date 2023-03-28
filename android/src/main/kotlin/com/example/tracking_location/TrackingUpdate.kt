@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -13,7 +14,7 @@ import com.google.android.gms.location.LocationServices
 @SuppressLint("StaticFieldLeak")
 object TrackingUpdate {
     private var mLocationRequest: LocationRequest? = null
-    private val UPDATE_INTERVAL = (30000).toLong()
+    private val UPDATE_INTERVAL = (8000).toLong()
     private val FASTEST_UPDATE_INTERVAL = UPDATE_INTERVAL / 2
     private val MAX_WAIT_TIME = UPDATE_INTERVAL * 2
     private val ACTION_PROCESS_UPDATES = "com.google.android.c2dm.intent.LOCATION"
@@ -40,7 +41,7 @@ object TrackingUpdate {
             mLocationRequest!!.fastestInterval = FASTEST_UPDATE_INTERVAL
             mLocationRequest!!.maxWaitTime = MAX_WAIT_TIME
             mLocationRequest!!.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-
+            Log.e("Send location url", "LocationServices")
             LocationServices.getFusedLocationProviderClient(context).requestLocationUpdates(
                 mLocationRequest, getPendingIntent())
         }
