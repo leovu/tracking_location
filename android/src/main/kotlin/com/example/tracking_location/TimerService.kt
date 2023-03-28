@@ -40,22 +40,22 @@ class TimerService : Service() {
     }
     internal inner class TimeDisplayTimerTask : TimerTask() {
         override fun run() {
-            Handler(Looper.getMainLooper()).postDelayed({
-                val currentTime = Calendar.getInstance().timeInMillis
-                if(TrackingUpdate.isUpdateLocation) {
-                    if(lastTimeUpdate != ""){
-                        val lastTime = lastTimeUpdate.toLong()
-                        val time = currentTime - lastTime
-                        if(time < UPDATE_INTERVAL) {
-                            lastTimeUpdate = currentTime.toString()
-                            sendLocation()
-                        }
-                    }
-                    else {
-                        sendLocation()
-                    }
-                }
-            }, 30000)
+//            Handler(Looper.getMainLooper()).postDelayed({
+//                val currentTime = Calendar.getInstance().timeInMillis
+//                if(TrackingUpdate.isUpdateLocation) {
+//                    if(lastTimeUpdate != ""){
+//                        val lastTime = lastTimeUpdate.toLong()
+//                        val time = currentTime - lastTime
+//                        if(time < UPDATE_INTERVAL) {
+//                            lastTimeUpdate = currentTime.toString()
+//                            sendLocation()
+//                        }
+//                    }
+//                    else {
+//                        sendLocation()
+//                    }
+//                }
+//            }, 30000)
         }
     }
 

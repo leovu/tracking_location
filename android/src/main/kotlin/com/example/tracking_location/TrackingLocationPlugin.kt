@@ -13,7 +13,6 @@ class TrackingLocationPlugin: FlutterPlugin, MethodCallHandler {
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "tracking_location")
     channel.setMethodCallHandler(this)
-    TrackingUpdate.channel = channel
     TrackingUpdate.context = flutterPluginBinding.applicationContext
   }
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
