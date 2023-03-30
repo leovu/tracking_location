@@ -38,10 +38,10 @@ class LocationService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val locationRequest: LocationRequest = create().apply {
-        interval = 3000
-        fastestInterval = 3000
+        interval = 10000
+        fastestInterval = 5000
         priority = PRIORITY_BALANCED_POWER_ACCURACY
-        maxWaitTime = 5000
+        maxWaitTime = 30000
     }
 
     private var locationCallback: LocationCallback = object : LocationCallback() {

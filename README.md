@@ -12,7 +12,7 @@ Tracking Location Flutter project.
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
     <uses-permission android:name="android.hardware.location.gps" />
     <application>
-        <service android:name="com.example.tracking_location.TimerService" />
+        <service android:name="com.example.tracking_location.LocationService" />
     </application>
 
 
