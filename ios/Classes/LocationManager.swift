@@ -198,6 +198,7 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
             locationManager.stopMonitoring(for: region)
             do {
                 try setupMonitorRegion()
+                print("setupMonitorRegion")
             } catch {
                 print("Error: \(error)")
             }
