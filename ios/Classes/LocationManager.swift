@@ -69,13 +69,43 @@ class TerminatedLocationManager :NSObject {
         start()
     }
     func start(){
-        DispatchQueue.background(background: {
-            if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
-                self.locationManager.startMonitoringSignificantLocationChanges()
-            } else {
-                self.locationManager.requestAlwaysAuthorization()
+
+        if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
+            self.locationManager.startMonitoringSignificantLocationChanges()
+            do {
+                try setupMonitorRegion()
+            } catch {
+                print("Error: \(error)")
             }
-        }, completion:{})
+        } else {
+            self.locationManager.requestAlwaysAuthorization()
+        }
+        // DispatchQueue.background(background: {
+        //     if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
+        //         self.locationManager.startMonitoringSignificantLocationChanges()
+        //     } else {
+        //         self.locationManager.requestAlwaysAuthorization()
+        //     }
+        // }, completion:{})
+    }
+    func setupMonitorRegion(){
+        let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
+        let lastLongitude = UserDefaults.standard.double(forKey: "flutter.last_longitude")
+        if lastLatitude != nil && lastLongitude != null {
+           if CLLocationManager.authorizationStatus() == .authorizedAlways {
+               if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
+                  let maxDistance = 100.0
+                  let center = CLLocationCoordinate2D(latitude: location.coordinate.latitude,
+                                                                            longitude: location.coordinate.longitude)
+                  let identifier = "\(latitude)_\(longitude)"
+                  let region = CLCircularRegion(center: center,
+                                                            radius: maxDistance, identifier: identifier)
+                  region.notifyOnEntry = true
+                  region.notifyOnExit = true
+                  locationManager.startMonitoring(for: region)
+               }
+           }
+        }
     }
     func stop(){
         locationManager.stopMonitoringSignificantLocationChanges()
@@ -111,7 +141,7 @@ class TerminatedLocationManager :NSObject {
             })
             task.resume()
         }
-        
+
     }
     func beginNewTerminatedTask(){
         if(LocationUpdate.shared.isStop)
@@ -130,7 +160,7 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
                 let region = CLCircularRegion(center: center,
                                               radius: maxDistance, identifier: identifier)
                 region.notifyOnEntry = true
-                region.notifyOnExit = false
+                region.notifyOnExit = true
                 locationManager.startMonitoring(for: region)
             }
         }
@@ -167,6 +197,11 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
         if let region = region as? CLCircularRegion {
             sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
             locationManager.stopMonitoring(for: region)
+            do {
+                try setupMonitorRegion()
+            } catch {
+                print("Error: \(error)")
+            }
         }
     }
     
