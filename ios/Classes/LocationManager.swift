@@ -74,6 +74,7 @@ class TerminatedLocationManager :NSObject {
             self.locationManager.startMonitoringSignificantLocationChanges()
             do {
                 try setupMonitorRegion()
+                print("setupMonitorRegion")
             } catch {
                 print("Error: \(error)")
             }
@@ -95,11 +96,9 @@ class TerminatedLocationManager :NSObject {
            if CLLocationManager.authorizationStatus() == .authorizedAlways {
                if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
                   let maxDistance = 100.0
-                  let center = CLLocationCoordinate2D(latitude: lastLatitude,
-                                                                            longitude: lastLongitude)
+                  let center = CLLocationCoordinate2D(latitude: lastLatitude, longitude: lastLongitude)
                   let identifier = "\(latitude)_\(longitude)"
-                  let region = CLCircularRegion(center: center,
-                                                            radius: maxDistance, identifier: identifier)
+                  let region = CLCircularRegion(center: center, radius: maxDistance, identifier: identifier)
                   region.notifyOnEntry = true
                   region.notifyOnExit = true
                   locationManager.startMonitoring(for: region)
