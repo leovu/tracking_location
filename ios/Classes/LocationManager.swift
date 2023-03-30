@@ -97,7 +97,7 @@ class TerminatedLocationManager :NSObject {
                if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
                   let maxDistance = 100.0
                   let center = CLLocationCoordinate2D(latitude: lastLatitude, longitude: lastLongitude)
-                  let identifier = "\(latitude)_\(longitude)"
+                  let identifier = "\(lastLatitude)_\(lastLongitude)"
                   let region = CLCircularRegion(center: center, radius: maxDistance, identifier: identifier)
                   region.notifyOnEntry = true
                   region.notifyOnExit = true
