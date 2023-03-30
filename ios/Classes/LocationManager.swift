@@ -91,12 +91,12 @@ class TerminatedLocationManager :NSObject {
     func setupMonitorRegion(){
         let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
         let lastLongitude = UserDefaults.standard.double(forKey: "flutter.last_longitude")
-        if lastLatitude != nil && lastLongitude != null {
+        if lastLatitude != nil && lastLongitude != nil {
            if CLLocationManager.authorizationStatus() == .authorizedAlways {
                if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
                   let maxDistance = 100.0
-                  let center = CLLocationCoordinate2D(latitude: location.coordinate.latitude,
-                                                                            longitude: location.coordinate.longitude)
+                  let center = CLLocationCoordinate2D(latitude: lastLatitude,
+                                                                            longitude: lastLongitude)
                   let identifier = "\(latitude)_\(longitude)"
                   let region = CLCircularRegion(center: center,
                                                             radius: maxDistance, identifier: identifier)
