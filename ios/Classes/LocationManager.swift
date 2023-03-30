@@ -92,7 +92,7 @@ class TerminatedLocationManager :NSObject {
     func setupMonitorRegion(){
         let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
         let lastLongitude = UserDefaults.standard.double(forKey: "flutter.last_longitude")
-        if lastLatitude != nil && lastLongitude != nil {
+        if lastLatitude != nil && lastLongitude != nil &&  lastLatitude != 0 && lastLongitude != 0{
            if CLLocationManager.authorizationStatus() == .authorizedAlways {
                if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
                   let maxDistance = 100.0
@@ -118,27 +118,29 @@ class TerminatedLocationManager :NSObject {
         if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            let params = ["lat":location.coordinate.latitude,
-                          "lng":location.coordinate.longitude,
-                          "time": formatter.string(from: Date()),
-                          "speed": location.speed
-            ] as Dictionary<String, Any>
-            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
-            request.httpMethod = "POST"
-            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let session = URLSession.shared
-            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                print(response!)
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                    print(json)
-                } catch {
-                    print("error")
-                }
-            })
-            task.resume()
+            if location.coordinate.latitude != 0 && location.coordinate.longitude != 0{
+                let params = ["lat":location.coordinate.latitude,
+                                          "lng":location.coordinate.longitude,
+                                          "time": formatter.string(from: Date()),
+                                          "speed": location.speed
+                            ] as Dictionary<String, Any>
+                            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
+                            request.httpMethod = "POST"
+                            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+                            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                            let session = URLSession.shared
+                            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                                print(response!)
+                                do {
+                                    let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+                                    print(json)
+                                } catch {
+                                    print("error")
+                                }
+                            })
+                            task.resume()
+            }
         }
 
     }
