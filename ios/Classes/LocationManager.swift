@@ -110,7 +110,7 @@ class TerminatedLocationManager :NSObject {
         locationManager.stopMonitoringSignificantLocationChanges()
     }
     func sendLocationToServer(location:CLLocation){
-        updateLocation(location: location)
+//         updateLocation(location: location)
         UserLocation.sharedInstance.location = location
         UserLocation.sharedInstance.updateLocation()
     }
