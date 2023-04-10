@@ -9,4 +9,10 @@ interface Api {
     fun sendLocation(
         @Body body: Map<String, Any>
     ): Call<ResponseModel>
+
+    @JvmSuppressWildcards
+    @POST("children/trackingOffline")
+    fun trackingOffline(
+        @Body body: TrackingOfflineRequestModel
+    ): Call<ResponseModel>
 }

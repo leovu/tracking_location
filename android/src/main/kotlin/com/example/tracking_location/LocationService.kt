@@ -1,12 +1,15 @@
 package com.example.tracking_location
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
@@ -17,7 +20,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.google.android.gms.location.LocationRequest.*
+import com.google.gson.Gson
+import com.google.gson.JsonArray
 import okhttp3.OkHttpClient
+import org.json.JSONArray
+import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -25,6 +32,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.collections.ArrayList
 
 class LocationService : Service() {
 
@@ -76,11 +84,6 @@ class LocationService : Service() {
     }
 
     private fun sendLocation(map: Map<String, Any>){
-
-        Log.e("Send location url", url)
-        Log.e("Send location token", token)
-        Log.e("Send location params", map.toString())
-
         val httpClient = OkHttpClient.Builder().addInterceptor { chain ->
             val original = chain.request()
 
@@ -93,19 +96,88 @@ class LocationService : Service() {
             val request = requestBuilder.build()
             chain.proceed(request)
         }.build()
-
         val retrofit = Retrofit.Builder().baseUrl(url).addConverterFactory(GsonConverterFactory.create()).client(httpClient).build()
-        retrofit.create(Api::class.java).sendLocation(map)
-            .enqueue(object: retrofit2.Callback<ResponseModel>{
-                override fun onFailure(call: Call<ResponseModel>, t: Throwable) {
-                    Log.e("onFailure", t.message.toString())
-                }
+        if(isNetworkAvailable(context = mContext)){
+            Log.e("TAG", "isNetworkAvailable")
+            Log.e("Send location url", url)
+            Log.e("Send location token", token)
+            Log.e("Send location params", map.toString())
+            val trackingOffline = mRefs.getString("flutter.tracking_offline","")!!
+            if(trackingOffline != ""){
+                var trackingOfflineRequestModel =  Gson().fromJson<TrackingOfflineRequestModel>(trackingOffline, TrackingOfflineRequestModel::class.java)
+                var model = TrackingOfflineItemRequestModel(lat = map["lat"]!!, lng = map["lng"]!!, time = map["time"]!!, speed = map["speed"]!!)
+                trackingOfflineRequestModel.trackings.add(model)
 
-                override fun onResponse(call: Call<ResponseModel>, response: Response<ResponseModel>) {
-                    Log.e("onResponse", response.body()?.toString()!!)
-                }
+                retrofit.create(Api::class.java).trackingOffline(trackingOfflineRequestModel)
+                    .enqueue(object: retrofit2.Callback<ResponseModel>{
+                        override fun onFailure(call: Call<ResponseModel>, t: Throwable) {
+                            mRefs.edit().putString("flutter.tracking_offline", Gson().toJson(trackingOfflineRequestModel))
+                            mRefs.edit().apply()
+                        }
 
-            })
+                        @SuppressLint("CommitPrefEdits")
+                        override fun onResponse(call: Call<ResponseModel>, response: Response<ResponseModel>) {
+                            mRefs.edit().putString("flutter.tracking_offline","")
+                            mRefs.edit().apply()
+                        }
+
+                    })
+            }else{
+                retrofit.create(Api::class.java).sendLocation(map)
+                    .enqueue(object: retrofit2.Callback<ResponseModel>{
+                        override fun onFailure(call: Call<ResponseModel>, t: Throwable) {
+                            Log.e("onFailure", t.message.toString())
+                        }
+
+                        override fun onResponse(call: Call<ResponseModel>, response: Response<ResponseModel>) {
+                            Log.e("onResponse", response.body()?.toString()!!)
+                        }
+
+                    })
+            }
+
+        }else{
+            Log.e("TAG", "NetworkUnavailable")
+            val trackingOffline = mRefs.getString("flutter.tracking_offline","")!!
+            var trackingOfflineRequestModel:TrackingOfflineRequestModel
+            var model = TrackingOfflineItemRequestModel(lat = map["lat"]!!, lng = map["lng"]!!, time = map["time"]!!, speed = map["speed"]!!)
+            if(trackingOffline != ""){
+                trackingOfflineRequestModel = Gson().fromJson(trackingOffline, TrackingOfflineRequestModel::class.java)
+            }else{
+                trackingOfflineRequestModel = TrackingOfflineRequestModel(trackings =  kotlin.collections.ArrayList())
+            }
+            trackingOfflineRequestModel.trackings.add(model)
+            mRefs.edit().putString("flutter.tracking_offline", Gson().toJson(trackingOfflineRequestModel))
+            mRefs.edit().apply()
+        }
+
+    }
+
+    fun isNetworkAvailable(context: Context?): Boolean {
+        if (context == null) return false
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+            if (capabilities != null) {
+                when {
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
+                        return true
+                    }
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
+                        return true
+                    }
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> {
+                        return true
+                    }
+                }
+            }
+        } else {
+            val activeNetworkInfo = connectivityManager.activeNetworkInfo
+            if (activeNetworkInfo != null && activeNetworkInfo.isConnected) {
+                return true
+            }
+        }
+        return false
     }
 
     override fun onCreate() {
