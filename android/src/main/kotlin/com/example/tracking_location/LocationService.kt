@@ -111,14 +111,18 @@ class LocationService : Service() {
                 retrofit.create(Api::class.java).trackingOffline(trackingOfflineRequestModel)
                     .enqueue(object: retrofit2.Callback<ResponseModel>{
                         override fun onFailure(call: Call<ResponseModel>, t: Throwable) {
-                            mRefs.edit().putString("flutter.tracking_offline", Gson().toJson(trackingOfflineRequestModel))
-                            mRefs.edit().apply()
+                            mRefs.edit().apply {
+                                putString("flutter.tracking_offline", Gson().toJson(trackingOfflineRequestModel))
+                                apply()
+                            }
                         }
 
                         @SuppressLint("CommitPrefEdits")
                         override fun onResponse(call: Call<ResponseModel>, response: Response<ResponseModel>) {
-                            mRefs.edit().putString("flutter.tracking_offline","")
-                            mRefs.edit().apply()
+                            mRefs.edit().apply {
+                                putString("flutter.tracking_offline","")
+                                apply()
+                            }
                         }
 
                     })
@@ -147,8 +151,10 @@ class LocationService : Service() {
                 trackingOfflineRequestModel = TrackingOfflineRequestModel(trackings =  kotlin.collections.ArrayList())
             }
             trackingOfflineRequestModel.trackings.add(model)
-            mRefs.edit().putString("flutter.tracking_offline", Gson().toJson(trackingOfflineRequestModel))
-            mRefs.edit().apply()
+            mRefs.edit().apply {
+                putString("flutter.tracking_offline", Gson().toJson(trackingOfflineRequestModel))
+                apply()
+            }
         }
 
     }
