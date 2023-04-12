@@ -116,6 +116,9 @@ class TerminatedLocationManager :NSObject {
         UserLocation.sharedInstance.updateLocation()
     }
     func updateLocation(location:CLLocation) {
+        if location.coordinate.latitude == 0 || location.coordinate.longitude == 0 {
+            return
+        }
         if NetworkReachability.isConnectedToNetwork() {
             if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
                 let formatter = DateFormatter()
@@ -488,6 +491,9 @@ final class UserLocation {
     func updateLocationOffline(position:CLLocation?) {
         var params:[Dictionary<String, Any>]?
         if position != nil {
+            if position!.coordinate.latitude == 0 || position!.coordinate.longitude == 0 {
+                return
+            }
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
             let params = [["lat":position!.coordinate.latitude,
@@ -495,7 +501,6 @@ final class UserLocation {
                            "time": formatter.string(from: Date()),
                            "speed": position!.speed
              ]] as [Dictionary<String, Any>]
-            
         }
         if var value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? [Dictionary<String, Any>] {
             var arr:[Dictionary<String, Any>] = value
