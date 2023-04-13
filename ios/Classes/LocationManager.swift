@@ -120,6 +120,10 @@ class TerminatedLocationManager :NSObject {
             return
         }
         if NetworkReachability.isConnectedToNetwork() {
+
+            // Nếu shared có thì  + với location call api uploadOffline
+            // Nếu shared không có thì call api api children tracking
+
             if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -147,6 +151,7 @@ class TerminatedLocationManager :NSObject {
             }
         }
         else {
+            // save
             UserLocation.sharedInstance.updateLocationOffline(position: location)
         }
 
@@ -488,6 +493,8 @@ final class UserLocation {
         self.lastLocation = self.location
         LocationTracking.shared.updateCurrentLocation(lat: self.location!.coordinate.latitude, lng: self.location!.coordinate.longitude, speed: Double(self.location!.speed))
     }
+
+    // sharepreference đang lưu dạng { "trackings": [{"lat": "", "lng": "", "time": "", "speed": ""}] }
     func updateLocationOffline(position:CLLocation?) {
         var params:[Dictionary<String, Any>]?
         if position != nil {
@@ -502,32 +509,32 @@ final class UserLocation {
                            "speed": position!.speed
              ]] as [Dictionary<String, Any>]
         }
-        if var value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? [Dictionary<String, Any>] {
-            var arr:[Dictionary<String, Any>] = value
+        if var value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
+            var arr:[Dictionary<String, Any>] = value["trackings"]
             if let val = params {
                 arr += val
             }
             if NetworkReachability.isConnectedToNetwork() {
-                uploadOffline(value: arr)
+                uploadOffline(value: ["trackings":arr])
             }
             else {
-                UserDefaults.standard.set(arr, forKey: "flutter.tracking_offline")
+                UserDefaults.standard.set(["trackings":arr], forKey: "flutter.tracking_offline")
             }
         }
         else {
             if let val = params {
                 if NetworkReachability.isConnectedToNetwork() {
-                    uploadOffline(value: val)
+                    uploadOffline(value: ["trackings":val])
                 }
                 else {
-                    UserDefaults.standard.set(params, forKey: "flutter.tracking_offline")
+                    UserDefaults.standard.set(["trackings":params], forKey: "flutter.tracking_offline")
                 }
             }
         }
     }
-    func uploadOffline(value:[Dictionary<String, Any>]) {
+    func uploadOffline(value:Dictionary<String, Any>) {
         if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-            let params = ["trackings":value] as Dictionary<String, Any>
+            let params = value
             var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/trackingOffline")!)
             request.httpMethod = "POST"
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
