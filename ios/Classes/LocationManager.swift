@@ -116,14 +116,13 @@ class TerminatedLocationManager :NSObject {
         UserLocation.sharedInstance.updateLocation()
     }
     func updateLocation(location:CLLocation) {
-        if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
-            return
-        }
         if NetworkReachability.isConnectedToNetwork() {
-
             // Nếu shared có thì  + với location call api uploadOffline
             // Nếu shared không có thì call api api children tracking
-
+            UserLocation.sharedInstance.updateLocationOffline(position: nil)
+            if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
+                return
+            }
             if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -509,8 +508,8 @@ final class UserLocation {
                            "speed": position!.speed
              ]] as [Dictionary<String, Any>]
         }
-        if var value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
-            var arr:[Dictionary<String, Any>] = value["trackings"]
+        if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
+            var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
             if let val = params {
                 arr += val
             }
