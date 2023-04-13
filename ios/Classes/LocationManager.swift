@@ -497,16 +497,15 @@ final class UserLocation {
     func updateLocationOffline(position:CLLocation?) {
         var params:[Dictionary<String, Any>]?
         if position != nil {
-            if position!.coordinate.latitude == 0 || position!.coordinate.longitude == 0 {
-                return
+            if position!.coordinate.latitude != 0 && position!.coordinate.longitude != 0 {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                let params = [["lat":position!.coordinate.latitude,
+                               "lng":position!.coordinate.longitude,
+                               "time": formatter.string(from: Date()),
+                               "speed": position!.speed
+                 ]] as [Dictionary<String, Any>]
             }
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            let params = [["lat":position!.coordinate.latitude,
-                           "lng":position!.coordinate.longitude,
-                           "time": formatter.string(from: Date()),
-                           "speed": position!.speed
-             ]] as [Dictionary<String, Any>]
         }
         if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
             var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
