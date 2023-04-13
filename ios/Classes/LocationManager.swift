@@ -116,7 +116,7 @@ class TerminatedLocationManager :NSObject {
         UserLocation.sharedInstance.updateLocation()
     }
     func updateLocation(location:CLLocation) {
-        if location.coordinate.latitude == 0 || location.coordinate.longitude == 0 {
+        if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
             return
         }
         if NetworkReachability.isConnectedToNetwork() {
