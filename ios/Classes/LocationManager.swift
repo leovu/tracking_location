@@ -500,7 +500,7 @@ final class UserLocation {
             if position!.coordinate.latitude != 0 && position!.coordinate.longitude != 0 {
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                let params = [["lat":position!.coordinate.latitude,
+                params = [["lat":position!.coordinate.latitude,
                                "lng":position!.coordinate.longitude,
                                "time": formatter.string(from: Date()),
                                "speed": position!.speed
