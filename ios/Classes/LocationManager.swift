@@ -17,7 +17,7 @@ class LocationUpdate {
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
-            UserLocation.sharedInstance.updateLocationOffline(position: nil)
+//             UserLocation.sharedInstance.updateLocationOffline(position: nil)
             locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
             locationManager.activityType = .other;
             locationManager.distanceFilter = kCLDistanceFilterNone;
@@ -116,10 +116,10 @@ class TerminatedLocationManager :NSObject {
         UserLocation.sharedInstance.updateLocation()
     }
     func updateLocation(location:CLLocation) {
-        if NetworkReachability.isConnectedToNetwork() {
+//         if NetworkReachability.isConnectedToNetwork() {
             // Nếu shared có thì  + với location call api uploadOffline
             // Nếu shared không có thì call api api children tracking
-            UserLocation.sharedInstance.updateLocationOffline(position: nil)
+//             UserLocation.sharedInstance.updateLocationOffline(position: nil)
             if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
                 return
             }
@@ -148,11 +148,11 @@ class TerminatedLocationManager :NSObject {
                 })
                 task.resume()
             }
-        }
-        else {
-            // save
-            UserLocation.sharedInstance.updateLocationOffline(position: location)
-        }
+//         }
+//         else {
+//             // save
+//             UserLocation.sharedInstance.updateLocationOffline(position: location)
+//         }
 
     }
     func beginNewTerminatedTask(){
