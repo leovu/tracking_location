@@ -109,6 +109,10 @@ class TerminatedLocationManager :NSObject {
         locationManager.stopMonitoringSignificantLocationChanges()
     }
     func sendLocationToServer(location:CLLocation){
+        if location.coordinate.latitude != 0 && location.coordinate.longitude != 0 {
+            UserDefaults.standard.set(location.coordinate.latitude, forKey: "flutter.last_latitude")
+            UserDefaults.standard.set(location.coordinate.longitude, forKey: "flutter.last_longitude")
+        }
         updateLocation(location: location)
         UserLocation.sharedInstance.location = location
         UserLocation.sharedInstance.updateLocation()
