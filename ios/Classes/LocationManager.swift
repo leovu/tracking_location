@@ -70,15 +70,13 @@ class TerminatedLocationManager :NSObject {
         start()
     }
     func start(){
-
+        
+        if #available(iOS 12.0, *) {
+            Internet.start()
+        }
         if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
             self.locationManager.startMonitoringSignificantLocationChanges()
-            do {
-                try setupMonitorRegion()
-                print("setupMonitorRegion")
-            } catch {
-                print("Error: \(error)")
-            }
+            setupMonitorRegion()
         } else {
             self.locationManager.requestAlwaysAuthorization()
         }
@@ -93,7 +91,7 @@ class TerminatedLocationManager :NSObject {
     func setupMonitorRegion(){
         let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
         let lastLongitude = UserDefaults.standard.double(forKey: "flutter.last_longitude")
-        if lastLatitude != nil && lastLongitude != nil {
+        if lastLatitude != 0 && lastLongitude != 0 {
            if CLLocationManager.authorizationStatus() == .authorizedAlways {
                if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
                   let maxDistance = 100.0
@@ -116,41 +114,47 @@ class TerminatedLocationManager :NSObject {
         UserLocation.sharedInstance.updateLocation()
     }
     func updateLocation(location:CLLocation) {
-        if NetworkReachability.isConnectedToNetwork() {
-            // Nếu shared có thì  + với location call api uploadOffline
-            // Nếu shared không có thì call api api children tracking
-            UserLocation.sharedInstance.updateLocationOffline(position: nil)
-            if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
-                return
+        if #available(iOS 12.0, *) {
+            if Internet.active || Internet.expensive{
+                // Nếu shared có thì  + với location call api uploadOffline
+                // Nếu shared không có thì call api api children tracking
+                UserLocation.sharedInstance.updateLocationOffline(position: nil)
+                if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
+                    return
+                }
+                if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                    let params = ["lat":location.coordinate.latitude,
+                                  "lng":location.coordinate.longitude,
+                                  "time": formatter.string(from: Date()),
+                                  "speed": location.speed
+                    ] as Dictionary<String, Any>
+                    var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
+                    request.httpMethod = "POST"
+                    request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+                    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    let session = URLSession.shared
+                    let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                        print(response!)
+                        do {
+                            let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+                            print(json)
+                        } catch {
+                            print("error")
+                            UserLocation.sharedInstance.updateLocationOffline(position: location,force: true)
+                        }
+                    })
+                    task.resume()
+                }
             }
-            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                let params = ["lat":location.coordinate.latitude,
-                              "lng":location.coordinate.longitude,
-                              "time": formatter.string(from: Date()),
-                              "speed": location.speed
-                ] as Dictionary<String, Any>
-                var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
-                request.httpMethod = "POST"
-                request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                let session = URLSession.shared
-                let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                    print(response!)
-                    do {
-                        let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                        print(json)
-                    } catch {
-                        print("error")
-                    }
-                })
-                task.resume()
+            else {
+                // save
+                UserLocation.sharedInstance.updateLocationOffline(position: location)
             }
-        }
-        else {
-            // save
+        } else {
+            // Fallback on earlier versions
             UserLocation.sharedInstance.updateLocationOffline(position: location)
         }
 
@@ -209,12 +213,7 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
         if let region = region as? CLCircularRegion {
             sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
             locationManager.stopMonitoring(for: region)
-            do {
-                try setupMonitorRegion()
-                print("setupMonitorRegion")
-            } catch {
-                print("Error: \(error)")
-            }
+            setupMonitorRegion()
         }
     }
     
@@ -494,7 +493,7 @@ final class UserLocation {
     }
 
     // sharepreference đang lưu dạng { "trackings": [{"lat": "", "lng": "", "time": "", "speed": ""}] }
-    func updateLocationOffline(position:CLLocation?) {
+    func updateLocationOffline(position:CLLocation?,force:Bool = false) {
         var params:[Dictionary<String, Any>]?
         if position != nil {
             if position!.coordinate.latitude == 0 || position!.coordinate.longitude == 0 {
@@ -513,20 +512,40 @@ final class UserLocation {
             if let val = params {
                 arr += val
             }
-            if NetworkReachability.isConnectedToNetwork() {
-                uploadOffline(value: ["trackings":arr])
+            if force {
+                UserDefaults.standard.set(["trackings":arr], forKey: "flutter.tracking_offline")
             }
             else {
-                UserDefaults.standard.set(["trackings":arr], forKey: "flutter.tracking_offline")
+                if #available(iOS 12.0, *) {
+                    if Internet.active || Internet.expensive{
+                        uploadOffline(value: ["trackings":arr])
+                    }
+                    else {
+                        UserDefaults.standard.set(["trackings":arr], forKey: "flutter.tracking_offline")
+                    }
+                } else {
+                    // Fallback on earlier versions
+                    UserDefaults.standard.set(["trackings":arr], forKey: "flutter.tracking_offline")
+                }
             }
         }
         else {
             if let val = params {
-                if NetworkReachability.isConnectedToNetwork() {
-                    uploadOffline(value: ["trackings":val])
+                if force {
+                    UserDefaults.standard.set(["trackings":params], forKey: "flutter.tracking_offline")
                 }
                 else {
-                    UserDefaults.standard.set(["trackings":params], forKey: "flutter.tracking_offline")
+                    if #available(iOS 12.0, *) {
+                        if Internet.active || Internet.expensive{
+                            uploadOffline(value: ["trackings":val])
+                        }
+                        else {
+                            UserDefaults.standard.set(["trackings":params], forKey: "flutter.tracking_offline")
+                        }
+                    } else {
+                        // Fallback on earlier versions
+                        UserDefaults.standard.set(["trackings":params], forKey: "flutter.tracking_offline")
+                    }
                 }
             }
         }
