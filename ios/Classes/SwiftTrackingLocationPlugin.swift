@@ -14,8 +14,12 @@ public class SwiftTrackingLocationPlugin: NSObject, FlutterPlugin {
           LocationUpdate.shared.tracking(action: true)
           result(1)
       }
-      else {
+      else if call.method == "stop" {
           LocationUpdate.shared.tracking(action: false)
+          result(0)
+      }
+      else if call.method == "saveOffline" {
+          UserDefaults.standard.set(call.arguments, forKey: "flutter.tracking_offline")
           result(0)
       }
   }
