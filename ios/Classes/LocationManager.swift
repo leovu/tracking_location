@@ -492,6 +492,7 @@ final class UserLocation {
                  ]] as [Dictionary<String, Any>]
             }
         }
+        UserDefaults.standard.synchronize()
         if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
             var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
             if let val = params {
@@ -520,9 +521,11 @@ final class UserLocation {
                     let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
                     print(json)
                     UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
+                    UserDefaults.standard.synchronize()
                 } catch {
                     print("error")
                     UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
+                    UserDefaults.standard.synchronize()
                 }
             })
             task.resume()
