@@ -133,14 +133,17 @@ class TerminatedLocationManager :NSObject {
             request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             let session = URLSession.shared
             let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                print(response!)
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                    print(json)
-                } catch {
-                    print("error")
-                    UserLocation.sharedInstance.updateLocationOffline(position: location)
-                }
+                    if let error = error {
+                        UserLocation.sharedInstance.updateLocationOffline(position: location)
+                    }
+//                 print(response!)
+//                 do {
+//                     let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+//                     print(json)
+//                 } catch {
+//                     print("error")
+//                     UserLocation.sharedInstance.updateLocationOffline(position: location)
+//                 }
             })
             task.resume()
         }
@@ -202,7 +205,7 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
             setupMonitorRegion()
         }
     }
-    
+
 }
 
 class BackgroundLocationManager :NSObject {
@@ -287,7 +290,7 @@ extension BackgroundLocationManager : CLLocationManagerDelegate {
             beginNewBackgroundTask()
         }
     }
-    
+
 }
 
 class ForegroundLocationManager :NSObject {
@@ -342,13 +345,13 @@ class ForegroundLocationManager :NSObject {
         }
         var previousTaskId = currentBgTaskId;
         currentBgTaskId = UIApplication.shared.beginBackgroundTask(expirationHandler: {
-            
+
         })
         if let taskId = previousTaskId{
             UIApplication.shared.endBackgroundTask(taskId)
             previousTaskId = UIBackgroundTaskIdentifier.invalid
         }
-        
+
         timer = Timer.scheduledTimer(timeInterval: ForegroundLocationManager.BACKGROUND_TIMER, target: self, selector: #selector(self.restart),userInfo: nil, repeats: false)
     }
 }
@@ -374,7 +377,7 @@ extension ForegroundLocationManager : CLLocationManagerDelegate {
             beginNewForegroundTask()
         }
     }
-    
+
 }
 
 open class Reachability {
@@ -516,17 +519,24 @@ final class UserLocation {
             request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             let session = URLSession.shared
             let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                print(response!)
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                    print(json)
+                if let error = error {
+                       UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
+                       UserDefaults.standard.synchronize()
+                }else{
                     UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
                     UserDefaults.standard.synchronize()
-                } catch {
-                    print("error")
-                    UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
-                    UserDefaults.standard.synchronize()
                 }
+//                 print(response!)
+//                 do {
+//                     let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+//                     print(json)
+//                     UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
+//                     UserDefaults.standard.synchronize()
+//                 } catch {
+//                     print("error")
+//                     UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
+//                     UserDefaults.standard.synchronize()
+//                 }
             })
             task.resume()
         }
