@@ -17,7 +17,7 @@ class LocationUpdate {
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
-            UserLocation.sharedInstance.updateLocationOffline(position: nil)
+//             UserLocation.sharedInstance.updateLocationOffline(position: nil)
             locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
             locationManager.activityType = .other;
             locationManager.distanceFilter = kCLDistanceFilterNone;
@@ -495,7 +495,7 @@ final class UserLocation {
                  ]] as [Dictionary<String, Any>]
             }
         }
-        UserDefaults.standard.synchronize()
+//         UserDefaults.standard.synchronize()
         if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
             var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
             if let val = params {
@@ -521,10 +521,10 @@ final class UserLocation {
             let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
                 if let error = error {
                        UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
-                       UserDefaults.standard.synchronize()
+//                        UserDefaults.standard.synchronize()
                 }else{
                     UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
-                    UserDefaults.standard.synchronize()
+//                     UserDefaults.standard.synchronize()
                 }
 //                 print(response!)
 //                 do {
