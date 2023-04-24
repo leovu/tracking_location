@@ -17,7 +17,7 @@ class LocationUpdate {
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
-            UserLocation.sharedInstance.updateLocationOffline(position: nil)
+//             UserLocation.sharedInstance.updateLocationOffline(position: nil)
             locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
             locationManager.activityType = .other;
             locationManager.distanceFilter = kCLDistanceFilterNone;
@@ -109,12 +109,12 @@ class TerminatedLocationManager :NSObject {
 //             UserDefaults.standard.set(location.coordinate.latitude, forKey: "flutter.last_latitude")
 //             UserDefaults.standard.set(location.coordinate.longitude, forKey: "flutter.last_longitude")
 //         }
-        updateLocation(location: location)
         UserLocation.sharedInstance.location = location
         UserLocation.sharedInstance.updateLocation()
+        updateLocation(location: location)
     }
     func updateLocation(location:CLLocation) {
-        UserLocation.sharedInstance.updateLocationOffline(position: nil)
+//         UserLocation.sharedInstance.updateLocationOffline(position: nil)
         if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
             return
         }
@@ -139,7 +139,7 @@ class TerminatedLocationManager :NSObject {
                     print(json)
                 } catch {
                     print("error")
-                    UserLocation.sharedInstance.updateLocationOffline(position: location)
+//                     UserLocation.sharedInstance.updateLocationOffline(position: location)
                 }
             })
             task.resume()
