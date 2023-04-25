@@ -70,9 +70,15 @@ class TerminatedLocationManager :NSObject {
         start()
     }
     func start(){
+
         if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
             self.locationManager.startMonitoringSignificantLocationChanges()
-            setupMonitorRegion()
+            do {
+                try setupMonitorRegion()
+                print("setupMonitorRegion")
+            } catch {
+                print("Error: \(error)")
+            }
         } else {
             self.locationManager.requestAlwaysAuthorization()
         }
@@ -87,7 +93,7 @@ class TerminatedLocationManager :NSObject {
     func setupMonitorRegion(){
         let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
         let lastLongitude = UserDefaults.standard.double(forKey: "flutter.last_longitude")
-        if lastLatitude != 0 && lastLongitude != 0 {
+        if lastLatitude != nil && lastLongitude != nil {
            if CLLocationManager.authorizationStatus() == .authorizedAlways {
                if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
                   let maxDistance = 100.0
@@ -105,45 +111,49 @@ class TerminatedLocationManager :NSObject {
         locationManager.stopMonitoringSignificantLocationChanges()
     }
     func sendLocationToServer(location:CLLocation){
-//         if location.coordinate.latitude != 0 && location.coordinate.longitude != 0 {
-//             UserDefaults.standard.set(location.coordinate.latitude, forKey: "flutter.last_latitude")
-//             UserDefaults.standard.set(location.coordinate.longitude, forKey: "flutter.last_longitude")
-//         }
+        updateLocation(location: location)
         UserLocation.sharedInstance.location = location
         UserLocation.sharedInstance.updateLocation()
-        updateLocation(location: location)
     }
     func updateLocation(location:CLLocation) {
-//         UserLocation.sharedInstance.updateLocationOffline(position: nil)
-        if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
-            return
-        }
-        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            let params = ["lat":location.coordinate.latitude,
-                          "lng":location.coordinate.longitude,
-                          "time": formatter.string(from: Date()),
-                          "speed": location.speed
-            ] as Dictionary<String, Any>
-            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
-            request.httpMethod = "POST"
-            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let session = URLSession.shared
-            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                print(response!)
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                    print(json)
-                } catch {
-                    print("error")
-//                     UserLocation.sharedInstance.updateLocationOffline(position: location)
-                }
-            })
-            task.resume()
-        }
+//         if NetworkReachability.isConnectedToNetwork() {
+            // Nếu shared có thì  + với location call api uploadOffline
+            // Nếu shared không có thì call api api children tracking
+//             UserLocation.sharedInstance.updateLocationOffline(position: nil)
+            if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
+                return
+            }
+            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                let params = ["lat":location.coordinate.latitude,
+                              "lng":location.coordinate.longitude,
+                              "time": formatter.string(from: Date()),
+                              "speed": location.speed
+                ] as Dictionary<String, Any>
+                var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
+                request.httpMethod = "POST"
+                request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                let session = URLSession.shared
+                let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                    print(response!)
+                    do {
+                        let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+                        print(json)
+                    } catch {
+                        print("error")
+                    }
+                })
+                task.resume()
+            }
+//         }
+//         else {
+//             // save
+//             UserLocation.sharedInstance.updateLocationOffline(position: location)
+//         }
+
     }
     func beginNewTerminatedTask(){
         if(LocationUpdate.shared.isStop)
@@ -199,10 +209,15 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
         if let region = region as? CLCircularRegion {
             sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
             locationManager.stopMonitoring(for: region)
-            setupMonitorRegion()
+            do {
+                try setupMonitorRegion()
+                print("setupMonitorRegion")
+            } catch {
+                print("Error: \(error)")
+            }
         }
     }
-    
+
 }
 
 class BackgroundLocationManager :NSObject {
@@ -287,7 +302,7 @@ extension BackgroundLocationManager : CLLocationManagerDelegate {
             beginNewBackgroundTask()
         }
     }
-    
+
 }
 
 class ForegroundLocationManager :NSObject {
@@ -342,13 +357,13 @@ class ForegroundLocationManager :NSObject {
         }
         var previousTaskId = currentBgTaskId;
         currentBgTaskId = UIApplication.shared.beginBackgroundTask(expirationHandler: {
-            
+
         })
         if let taskId = previousTaskId{
             UIApplication.shared.endBackgroundTask(taskId)
             previousTaskId = UIBackgroundTaskIdentifier.invalid
         }
-        
+
         timer = Timer.scheduledTimer(timeInterval: ForegroundLocationManager.BACKGROUND_TIMER, target: self, selector: #selector(self.restart),userInfo: nil, repeats: false)
     }
 }
@@ -374,7 +389,7 @@ extension ForegroundLocationManager : CLLocationManagerDelegate {
             beginNewForegroundTask()
         }
     }
-    
+
 }
 
 open class Reachability {
@@ -492,17 +507,26 @@ final class UserLocation {
                  ]] as [Dictionary<String, Any>]
             }
         }
-        UserDefaults.standard.synchronize()
         if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
             var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
             if let val = params {
                 arr += val
             }
-            uploadOffline(value: ["trackings":arr])
+            if NetworkReachability.isConnectedToNetwork() {
+                uploadOffline(value: ["trackings":arr])
+            }
+            else {
+                UserDefaults.standard.set(["trackings":arr], forKey: "flutter.tracking_offline")
+            }
         }
         else {
             if let val = params {
-                uploadOffline(value: ["trackings":val])
+                if NetworkReachability.isConnectedToNetwork() {
+                    uploadOffline(value: ["trackings":val])
+                }
+                else {
+                    UserDefaults.standard.set(["trackings":params], forKey: "flutter.tracking_offline")
+                }
             }
         }
     }
@@ -521,11 +545,8 @@ final class UserLocation {
                     let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
                     print(json)
                     UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
-                    UserDefaults.standard.synchronize()
                 } catch {
                     print("error")
-                    UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
-                    UserDefaults.standard.synchronize()
                 }
             })
             task.resume()
