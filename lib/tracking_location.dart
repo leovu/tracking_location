@@ -6,7 +6,7 @@ import 'package:workmanager/workmanager.dart';
 class TrackingLocation {
   static MethodChannel channel = const MethodChannel("tracking_location");
   static Function(dynamic)? updateOfflineFunction;
-  listen(Function(dynamic) action) {
+  static listen(Function(dynamic) action) {
     channel.setMethodCallHandler((call) async {
       if (call.method == "update_location") {
         if (kDebugMode) print("Get location update");
@@ -21,7 +21,7 @@ class TrackingLocation {
       }
     });
   }
-  Future<int>start() async {
+  static Future<int>start() async {
     final int result = await channel.invokeMethod('start');
     if(Platform.isIOS){
       await Workmanager().initialize(
@@ -35,7 +35,7 @@ class TrackingLocation {
   static saveOffline(dynamic value) {
     channel.invokeMethod('saveOffline',value);
   }
-  Future<int>stop() async  {
+  static Future<int>stop() async  {
     final int result = await channel.invokeMethod('stop');
     return result;
   }
