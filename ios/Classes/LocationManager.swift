@@ -477,7 +477,7 @@ final class UserLocation {
             }
         }
         if let val = params {
-                uploadOffline(value: val)
+                uploadOffline(value: val[0])
         }
     }
     func uploadOffline(value:Dictionary<String, Any>) {
