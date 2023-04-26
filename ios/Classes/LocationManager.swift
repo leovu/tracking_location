@@ -17,7 +17,7 @@ class LocationUpdate {
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
-//             UserLocation.sharedInstance.updateLocationOffline(position: nil)
+            UserLocation.sharedInstance.updateLocationOffline(position: nil)
             locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
             locationManager.activityType = .other;
             locationManager.distanceFilter = kCLDistanceFilterNone;
@@ -76,13 +76,6 @@ class TerminatedLocationManager :NSObject {
         } else {
             self.locationManager.requestAlwaysAuthorization()
         }
-        // DispatchQueue.background(background: {
-        //     if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
-        //         self.locationManager.startMonitoringSignificantLocationChanges()
-        //     } else {
-        //         self.locationManager.requestAlwaysAuthorization()
-        //     }
-        // }, completion:{})
     }
     func setupMonitorRegion(){
         let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
@@ -105,10 +98,6 @@ class TerminatedLocationManager :NSObject {
         locationManager.stopMonitoringSignificantLocationChanges()
     }
     func sendLocationToServer(location:CLLocation){
-//         if location.coordinate.latitude != 0 && location.coordinate.longitude != 0 {
-//             UserDefaults.standard.set(location.coordinate.latitude, forKey: "flutter.last_latitude")
-//             UserDefaults.standard.set(location.coordinate.longitude, forKey: "flutter.last_longitude")
-//         }
         updateLocation(location: location)
         UserLocation.sharedInstance.location = location
         UserLocation.sharedInstance.updateLocation()
@@ -136,14 +125,6 @@ class TerminatedLocationManager :NSObject {
                     if let error = error {
                         UserLocation.sharedInstance.updateLocationOffline(position: location)
                     }
-//                 print(response!)
-//                 do {
-//                     let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-//                     print(json)
-//                 } catch {
-//                     print("error")
-//                     UserLocation.sharedInstance.updateLocationOffline(position: location)
-//                 }
             })
             task.resume()
         }
@@ -205,7 +186,7 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
             setupMonitorRegion()
         }
     }
-
+    
 }
 
 class BackgroundLocationManager :NSObject {
@@ -290,7 +271,7 @@ extension BackgroundLocationManager : CLLocationManagerDelegate {
             beginNewBackgroundTask()
         }
     }
-
+    
 }
 
 class ForegroundLocationManager :NSObject {
@@ -345,13 +326,13 @@ class ForegroundLocationManager :NSObject {
         }
         var previousTaskId = currentBgTaskId;
         currentBgTaskId = UIApplication.shared.beginBackgroundTask(expirationHandler: {
-
+            
         })
         if let taskId = previousTaskId{
             UIApplication.shared.endBackgroundTask(taskId)
             previousTaskId = UIBackgroundTaskIdentifier.invalid
         }
-
+        
         timer = Timer.scheduledTimer(timeInterval: ForegroundLocationManager.BACKGROUND_TIMER, target: self, selector: #selector(self.restart),userInfo: nil, repeats: false)
     }
 }
@@ -377,7 +358,7 @@ extension ForegroundLocationManager : CLLocationManagerDelegate {
             beginNewForegroundTask()
         }
     }
-
+    
 }
 
 open class Reachability {
@@ -495,51 +476,12 @@ final class UserLocation {
                  ]] as [Dictionary<String, Any>]
             }
         }
-//         UserDefaults.standard.synchronize()
-        if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
-            var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
-            if let val = params {
-                arr += val
-            }
-            uploadOffline(value: ["trackings":arr])
-        }
-        else {
-            if let val = params {
-                uploadOffline(value: ["trackings":val])
-            }
+        if let val = params {
+                uploadOffline(value: val)
         }
     }
     func uploadOffline(value:Dictionary<String, Any>) {
-        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-            let params = value
-            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/trackingOffline")!)
-            request.httpMethod = "POST"
-            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let session = URLSession.shared
-            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                if let error = error {
-                       UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
-//                        UserDefaults.standard.synchronize()
-                }else{
-                    UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
-//                     UserDefaults.standard.synchronize()
-                }
-//                 print(response!)
-//                 do {
-//                     let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-//                     print(json)
-//                     UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
-//                     UserDefaults.standard.synchronize()
-//                 } catch {
-//                     print("error")
-//                     UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
-//                     UserDefaults.standard.synchronize()
-//                 }
-            })
-            task.resume()
-        }
+        LocationUpdate.shared.methodChannel?.invokeMethod("update_location_offline", arguments: value)
     }
 }
 
