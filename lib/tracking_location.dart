@@ -40,7 +40,7 @@ class TrackingLocation {
     return result;
   }
   @pragma('vm:entry-point') // Mandatory if the App is obfuscated or using Flutter 3.1+
-  void callbackDispatcher() {
+  static void callbackDispatcher() {
     Workmanager().executeTask((task, inputData) {
       MethodChannel channelOffline = const MethodChannel("tracking_location");
       channelOffline.setMethodCallHandler((call) async {
