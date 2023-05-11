@@ -13,7 +13,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final _trackingLocationPlugin = TrackingLocation();
   int? status;
   @override
   void initState() {
@@ -22,9 +21,9 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> init() async {
-    int result = await _trackingLocationPlugin.start();
+    int result = await TrackingLocation.start();
     if(result == 1) {
-      _trackingLocationPlugin.listen(getLocationUpdate);
+      TrackingLocation.listen(getLocationUpdate);
     }
     setState(() {
       status = result;
