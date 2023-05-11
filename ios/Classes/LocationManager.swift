@@ -13,6 +13,7 @@ class LocationUpdate {
     let locationManager = CLLocationManager()
     var isStop:Bool = true
     var methodChannel:FlutterMethodChannel?
+    var offlineTrackingData:[Dictionary<String, Any>] = []
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
@@ -482,8 +483,13 @@ final class UserLocation {
                 uploadOffline(value: ["trackings":arr])
             }
             else {
+                var arr:[Dictionary<String, Any>] = []
+                if !LocationUpdate.shared.offlineTrackingData.isEmpty {
+                    arr += LocationUpdate.shared.offlineTrackingData
+                }
                 if let val = params {
-                    uploadOffline(value: ["trackings":val])
+                    arr += val
+                    uploadOffline(value: ["trackings":arr])
                 }
             }
         }catch(_) {}
@@ -501,9 +507,11 @@ final class UserLocation {
                     let session = URLSession.shared
                     let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
                         if let error = error {
+                            LocationUpdate.shared.offlineTrackingData.append(value["trackings"] as! Dictionary<String, Any>)
                             UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
                             UserDefaults.standard.synchronize()
                         }else{
+                            LocationUpdate.shared.offlineTrackingData.removeAll()
                             UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
                             UserDefaults.standard.synchronize()
                         }
