@@ -54,8 +54,16 @@ class TerminatedLocationManager :NSObject {
     let locationManager = CLLocationManager()
     private override init(){
         super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
+    }
+    @objc func applicationEnterTerminated(){
+        ForegroundLocationManager.instance.stop()
+        BackgroundLocationManager.instance.stop()
+        start()
+    }
+    func start(){
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.activityType = .other;
         locationManager.distanceFilter = kCLDistanceFilterNone;
         if #available(iOS 9, *){
@@ -63,13 +71,6 @@ class TerminatedLocationManager :NSObject {
         }
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.startMonitoringSignificantLocationChanges()
-        NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
-    }
-    @objc func applicationEnterTerminated(){
-        start()
-    }
-    func start(){
         if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
             self.locationManager.startMonitoringSignificantLocationChanges()
             setupMonitorRegion()
@@ -91,6 +92,9 @@ class TerminatedLocationManager :NSObject {
                   region.notifyOnExit = true
                   locationManager.startMonitoring(for: region)
                }
+               else {
+                   locationManager.startMonitoringSignificantLocationChanges()
+               }
            }
         }
     }
@@ -98,35 +102,37 @@ class TerminatedLocationManager :NSObject {
         locationManager.stopMonitoringSignificantLocationChanges()
     }
     func sendLocationToServer(location:CLLocation){
-        updateLocation(location: location)
         UserLocation.sharedInstance.location = location
-        UserLocation.sharedInstance.updateLocation()
+        updateLocationTerminated(location: location)
     }
-    func updateLocation(location:CLLocation) {
+    func updateLocationTerminated(location:CLLocation) {
         UserLocation.sharedInstance.updateLocationOffline(position: nil)
-        do {
-            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                let params = ["lat":location.coordinate.latitude,
-                              "lng":location.coordinate.longitude,
-                              "time": formatter.string(from: Date()),
-                              "speed": location.speed
-                ] as Dictionary<String, Any>
-                var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
-                request.httpMethod = "POST"
-                request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                let session = URLSession.shared
-                let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                        if let error = error {
+        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            let params = ["lat":location.coordinate.latitude,
+                          "lng":location.coordinate.longitude,
+                          "time": formatter.string(from: Date()),
+                          "speed": location.speed
+            ] as Dictionary<String, Any>
+            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
+            request.httpMethod = "POST"
+            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let session = URLSession.shared
+            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                    if let httpResponse = response as? HTTPURLResponse {
+                        if(httpResponse.statusCode != 200) {
                             UserLocation.sharedInstance.updateLocationOffline(position: location)
                         }
-                })
-                task.resume()
-            }
-        }catch(_) {}
+                    }
+                    else {
+                        UserLocation.sharedInstance.updateLocationOffline(position: location)
+                    }
+            })
+            task.resume()
+        }
     }
     func beginNewTerminatedTask(){
         if(LocationUpdate.shared.isStop)
@@ -147,6 +153,9 @@ extension TerminatedLocationManager : CLLocationManagerDelegate {
                 region.notifyOnEntry = true
                 region.notifyOnExit = true
                 locationManager.startMonitoring(for: region)
+            }
+            else {
+                locationManager.startMonitoringSignificantLocationChanges()
             }
         }
     }
@@ -463,62 +472,59 @@ final class UserLocation {
 
     // sharepreference đang lưu dạng { "trackings": [{"lat": "", "lng": "", "time": "", "speed": ""}] }
     func updateLocationOffline(position:CLLocation?) {
-        do {
-            var params:[Dictionary<String, Any>]?
-            if position != nil {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                params = [["lat":position!.coordinate.latitude,
-                           "lng":position!.coordinate.longitude,
-                           "time": formatter.string(from: Date()),
-                           "speed": position!.speed
-                          ]] as [Dictionary<String, Any>]
+        var params:[Dictionary<String, Any>]?
+        if position != nil {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            params = [["lat":position!.coordinate.latitude,
+                       "lng":position!.coordinate.longitude,
+                       "time": formatter.string(from: Date()),
+                       "speed": position!.speed
+                      ]] as [Dictionary<String, Any>]
+        }
+        UserDefaults.standard.synchronize()
+        if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
+            var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
+            if let val = params {
+                arr += val
             }
-            UserDefaults.standard.synchronize()
-            if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
-                var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
-                if let val = params {
-                    arr += val
-                }
+            uploadOffline(value: ["trackings":arr])
+        }
+        else {
+            var arr:[Dictionary<String, Any>] = []
+            if !LocationUpdate.shared.offlineTrackingData.isEmpty {
+                arr += LocationUpdate.shared.offlineTrackingData
+            }
+            if let val = params {
+                arr += val
                 uploadOffline(value: ["trackings":arr])
             }
-            else {
-                var arr:[Dictionary<String, Any>] = []
-                if !LocationUpdate.shared.offlineTrackingData.isEmpty {
-                    arr += LocationUpdate.shared.offlineTrackingData
-                }
-                if let val = params {
-                    arr += val
-                    uploadOffline(value: ["trackings":arr])
-                }
-            }
-        }catch(_) {}
+        }
     }
     func uploadOffline(value:Dictionary<String, Any>) {
-        DispatchQueue.global(qos: .utility).async {
-            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-                do {
-                    let params = value
-                    var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/trackingOffline")!)
-                    request.httpMethod = "POST"
-                    request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-                    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                    let session = URLSession.shared
-                    let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                        if let error = error {
-                            LocationUpdate.shared.offlineTrackingData.append(value["trackings"] as! Dictionary<String, Any>)
-                            UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
-                            UserDefaults.standard.synchronize()
-                        }else{
-                            LocationUpdate.shared.offlineTrackingData.removeAll()
-                            UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
-                            UserDefaults.standard.synchronize()
-                        }
-                    })
-                    task.resume()
-                }catch(_) {}
-            }
+        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
+            let params = value
+            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/trackingOffline")!)
+            request.httpMethod = "POST"
+            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let session = URLSession.shared
+            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                if let httpResponse = response as? HTTPURLResponse {
+                    if(httpResponse.statusCode != 200) {
+                        LocationUpdate.shared.offlineTrackingData.append(value["trackings"] as! Dictionary<String, Any>)
+                        UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
+                        UserDefaults.standard.synchronize()
+                    }
+                }
+                else {
+                    LocationUpdate.shared.offlineTrackingData.removeAll()
+                    UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
+                    UserDefaults.standard.synchronize()
+                }
+            })
+            task.resume()
         }
     }
 }
