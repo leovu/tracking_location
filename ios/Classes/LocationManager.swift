@@ -13,11 +13,9 @@ class LocationUpdate {
     let locationManager = CLLocationManager()
     var isStop:Bool = true
     var methodChannel:FlutterMethodChannel?
-    var offlineTrackingData:[Dictionary<String, Any>] = []
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
-            UserLocation.sharedInstance.updateLocationOffline(position: nil)
             locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
             locationManager.activityType = .other;
             locationManager.distanceFilter = kCLDistanceFilterNone;
@@ -38,163 +36,13 @@ class LocationManger:NSObject {
     func start() {
         ForegroundLocationManager.instance.start()
         BackgroundLocationManager.instance.start()
-        TerminatedLocationManager.instance.start()
         UserLocation.sharedInstance.start()
     }
     func stop() {
         ForegroundLocationManager.instance.stop()
         BackgroundLocationManager.instance.stop()
-        TerminatedLocationManager.instance.stop()
         UserLocation.sharedInstance.stop()
     }
-}
-
-class TerminatedLocationManager :NSObject {
-    static let instance = TerminatedLocationManager()
-    let locationManager = CLLocationManager()
-    private override init(){
-        super.init()
-        NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
-    }
-    @objc func applicationEnterTerminated(){
-        ForegroundLocationManager.instance.stop()
-        BackgroundLocationManager.instance.stop()
-        start()
-    }
-    func start(){
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.activityType = .other;
-        locationManager.distanceFilter = kCLDistanceFilterNone;
-        if #available(iOS 9, *){
-            locationManager.allowsBackgroundLocationUpdates = true
-        }
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
-        if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
-            self.locationManager.startMonitoringSignificantLocationChanges()
-            setupMonitorRegion()
-        } else {
-            self.locationManager.requestAlwaysAuthorization()
-        }
-    }
-    func setupMonitorRegion(){
-        let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
-        let lastLongitude = UserDefaults.standard.double(forKey: "flutter.last_longitude")
-        if lastLatitude != 0 && lastLongitude != 0 {
-           if CLLocationManager.authorizationStatus() == .authorizedAlways {
-               if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-                  let maxDistance = 100.0
-                  let center = CLLocationCoordinate2D(latitude: lastLatitude, longitude: lastLongitude)
-                  let identifier = "\(lastLatitude)_\(lastLongitude)"
-                  let region = CLCircularRegion(center: center, radius: maxDistance, identifier: identifier)
-                  region.notifyOnEntry = true
-                  region.notifyOnExit = true
-                  locationManager.startMonitoring(for: region)
-               }
-               else {
-                   locationManager.startMonitoringSignificantLocationChanges()
-               }
-           }
-        }
-    }
-    func stop(){
-        locationManager.stopMonitoringSignificantLocationChanges()
-    }
-    func sendLocationToServer(location:CLLocation){
-        UserLocation.sharedInstance.location = location
-        updateLocationTerminated(location: location)
-    }
-    func updateLocationTerminated(location:CLLocation) {
-        UserLocation.sharedInstance.updateLocationOffline(position: nil)
-        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            let params = ["lat":location.coordinate.latitude,
-                          "lng":location.coordinate.longitude,
-                          "time": formatter.string(from: Date()),
-                          "speed": location.speed
-            ] as Dictionary<String, Any>
-            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
-            request.httpMethod = "POST"
-            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let session = URLSession.shared
-            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                    if let httpResponse = response as? HTTPURLResponse {
-                        if(httpResponse.statusCode != 200) {
-                            UserLocation.sharedInstance.updateLocationOffline(position: location)
-                        }
-                    }
-                    else {
-                        UserLocation.sharedInstance.updateLocationOffline(position: location)
-                    }
-            })
-            task.resume()
-        }
-    }
-    func beginNewTerminatedTask(){
-        if(LocationUpdate.shared.isStop)
-        {
-           return
-        }
-        start()
-    }
-}
-
-extension TerminatedLocationManager : CLLocationManagerDelegate {
-    func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String ) {
-        if CLLocationManager.authorizationStatus() == .authorizedAlways {
-            if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-                let maxDistance = 100.0
-                let region = CLCircularRegion(center: center,
-                                              radius: maxDistance, identifier: identifier)
-                region.notifyOnEntry = true
-                region.notifyOnExit = true
-                locationManager.startMonitoring(for: region)
-            }
-            else {
-                locationManager.startMonitoringSignificantLocationChanges()
-            }
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        beginNewTerminatedTask()
-    }
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        switch status {
-        case CLAuthorizationStatus.restricted: break
-        case CLAuthorizationStatus.denied: break
-        case CLAuthorizationStatus.notDetermined: break
-        default:
-            locationManager.startMonitoringSignificantLocationChanges()
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
-        if let region = region as? CLCircularRegion {
-            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else {return}
-        sendLocationToServer(location: location)
-        monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: location.coordinate.latitude,
-                                                               longitude: location.coordinate.longitude), identifier: "\(location.coordinate.latitude)_\(location.coordinate.longitude)")
-    }
-    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        if let region = region as? CLCircularRegion {
-            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        if let region = region as? CLCircularRegion {
-            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
-            locationManager.stopMonitoring(for: region)
-            setupMonitorRegion()
-        }
-    }
-    
 }
 
 class BackgroundLocationManager :NSObject {
@@ -369,22 +217,6 @@ extension ForegroundLocationManager : CLLocationManagerDelegate {
     
 }
 
-open class Reachability {
-    class func isLocationServiceEnabled() {
-        if CLLocationManager.locationServicesEnabled() {
-            switch(CLLocationManager.authorizationStatus()) {
-            case .notDetermined, .restricted, .denied , .authorizedWhenInUse:
-                LocationAlert().showAlertLocation()
-            case .authorizedAlways :break
-            default:
-                print("Somethng error!")
-            }
-        } else {
-            LocationAlert().showAlertLocation()
-        }
-    }
-}
-
 open class LocationAlert {
     let locationManager = CLLocationManager()
     func showAlertLocation(){
@@ -468,64 +300,6 @@ final class UserLocation {
         self.lastTime = Date()
         self.lastLocation = self.location
         LocationTracking.shared.updateCurrentLocation(lat: self.location!.coordinate.latitude, lng: self.location!.coordinate.longitude, speed: Double(self.location!.speed))
-    }
-
-    // sharepreference đang lưu dạng { "trackings": [{"lat": "", "lng": "", "time": "", "speed": ""}] }
-    func updateLocationOffline(position:CLLocation?) {
-        var params:[Dictionary<String, Any>]?
-        if position != nil {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            params = [["lat":position!.coordinate.latitude,
-                       "lng":position!.coordinate.longitude,
-                       "time": formatter.string(from: Date()),
-                       "speed": position!.speed
-                      ]] as [Dictionary<String, Any>]
-        }
-        UserDefaults.standard.synchronize()
-        if let value = UserDefaults.standard.object(forKey: "flutter.tracking_offline") as? Dictionary<String, Any> {
-            var arr:[Dictionary<String, Any>] = value["trackings"] as! [Dictionary<String, Any>]
-            if let val = params {
-                arr += val
-            }
-            uploadOffline(value: ["trackings":arr])
-        }
-        else {
-            var arr:[Dictionary<String, Any>] = []
-            if !LocationUpdate.shared.offlineTrackingData.isEmpty {
-                arr += LocationUpdate.shared.offlineTrackingData
-            }
-            if let val = params {
-                arr += val
-                uploadOffline(value: ["trackings":arr])
-            }
-        }
-    }
-    func uploadOffline(value:Dictionary<String, Any>) {
-        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-            let params = value
-            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/trackingOffline")!)
-            request.httpMethod = "POST"
-            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let session = URLSession.shared
-            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                if let httpResponse = response as? HTTPURLResponse {
-                    if(httpResponse.statusCode != 200) {
-                        LocationUpdate.shared.offlineTrackingData.append(value["trackings"] as! Dictionary<String, Any>)
-                        UserDefaults.standard.set(value, forKey: "flutter.tracking_offline")
-                        UserDefaults.standard.synchronize()
-                    }
-                }
-                else {
-                    LocationUpdate.shared.offlineTrackingData.removeAll()
-                    UserDefaults.standard.removeObject(forKey: "flutter.tracking_offline")
-                    UserDefaults.standard.synchronize()
-                }
-            })
-            task.resume()
-        }
     }
 }
 
