@@ -8,17 +8,14 @@ import CoreLocation
 import UIKit
 import Flutter
 
-
 class LocationUpdate {
     static let shared = LocationUpdate()
     let locationManager = CLLocationManager()
     var isStop:Bool = true
     var methodChannel:FlutterMethodChannel?
-    var offLineMethodChannel:FlutterMethodChannel?
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
-            UserLocation.sharedInstance.updateLocationOffline(position: nil)
             locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
             locationManager.activityType = .other;
             locationManager.distanceFilter = kCLDistanceFilterNone;
@@ -39,156 +36,13 @@ class LocationManger:NSObject {
     func start() {
         ForegroundLocationManager.instance.start()
         BackgroundLocationManager.instance.start()
-        TerminatedLocationManager.instance.start()
         UserLocation.sharedInstance.start()
     }
     func stop() {
         ForegroundLocationManager.instance.stop()
         BackgroundLocationManager.instance.stop()
-        TerminatedLocationManager.instance.stop()
         UserLocation.sharedInstance.stop()
     }
-}
-
-class TerminatedLocationManager :NSObject {
-    static let instance = TerminatedLocationManager()
-    let locationManager = CLLocationManager()
-    private override init(){
-        super.init()
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
-        locationManager.activityType = .other;
-        locationManager.distanceFilter = kCLDistanceFilterNone;
-        if #available(iOS 9, *){
-            locationManager.allowsBackgroundLocationUpdates = true
-        }
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.startMonitoringSignificantLocationChanges()
-        NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterTerminated), name: UIApplication.willTerminateNotification, object: nil)
-    }
-    @objc func applicationEnterTerminated(){
-        start()
-    }
-    func start(){
-        if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
-            self.locationManager.startMonitoringSignificantLocationChanges()
-            setupMonitorRegion()
-        } else {
-            self.locationManager.requestAlwaysAuthorization()
-        }
-    }
-    func setupMonitorRegion(){
-        let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
-        let lastLongitude = UserDefaults.standard.double(forKey: "flutter.last_longitude")
-        if lastLatitude != 0 && lastLongitude != 0 {
-           if CLLocationManager.authorizationStatus() == .authorizedAlways {
-               if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-                  let maxDistance = 100.0
-                  let center = CLLocationCoordinate2D(latitude: lastLatitude, longitude: lastLongitude)
-                  let identifier = "\(lastLatitude)_\(lastLongitude)"
-                  let region = CLCircularRegion(center: center, radius: maxDistance, identifier: identifier)
-                  region.notifyOnEntry = true
-                  region.notifyOnExit = true
-                  locationManager.startMonitoring(for: region)
-               }
-           }
-        }
-    }
-    func stop(){
-        locationManager.stopMonitoringSignificantLocationChanges()
-    }
-    func sendLocationToServer(location:CLLocation){
-        updateLocation(location: location)
-        UserLocation.sharedInstance.location = location
-        UserLocation.sharedInstance.updateLocation()
-    }
-    func updateLocation(location:CLLocation) {
-        UserLocation.sharedInstance.updateLocationOffline(position: nil)
-        if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
-            return
-        }
-        UserLocation.sharedInstance.updateLocationOffline(position: location)
-//        if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-//            let formatter = DateFormatter()
-//            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-//            let params = ["lat":location.coordinate.latitude,
-//                          "lng":location.coordinate.longitude,
-//                          "time": formatter.string(from: Date()),
-//                          "speed": location.speed
-//            ] as Dictionary<String, Any>
-//            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
-//            request.httpMethod = "POST"
-//            request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-//            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-//            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-//            let session = URLSession.shared
-//            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-//                    if let error = error {
-//                        UserLocation.sharedInstance.updateLocationOffline(position: location)
-//                    }
-//            })
-//            task.resume()
-//        }
-    }
-    func beginNewTerminatedTask(){
-        if(LocationUpdate.shared.isStop)
-        {
-           return
-        }
-        start()
-    }
-}
-
-extension TerminatedLocationManager : CLLocationManagerDelegate {
-    func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String ) {
-        if CLLocationManager.authorizationStatus() == .authorizedAlways {
-            if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-                let maxDistance = 100.0
-                let region = CLCircularRegion(center: center,
-                                              radius: maxDistance, identifier: identifier)
-                region.notifyOnEntry = true
-                region.notifyOnExit = true
-                locationManager.startMonitoring(for: region)
-            }
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        beginNewTerminatedTask()
-    }
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        switch status {
-        case CLAuthorizationStatus.restricted: break
-        case CLAuthorizationStatus.denied: break
-        case CLAuthorizationStatus.notDetermined: break
-        default:
-            locationManager.startMonitoringSignificantLocationChanges()
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
-        if let region = region as? CLCircularRegion {
-            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else {return}
-        sendLocationToServer(location: location)
-        monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: location.coordinate.latitude,
-                                                               longitude: location.coordinate.longitude), identifier: "\(location.coordinate.latitude)_\(location.coordinate.longitude)")
-    }
-    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        if let region = region as? CLCircularRegion {
-            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
-        }
-    }
-    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        if let region = region as? CLCircularRegion {
-            sendLocationToServer(location: CLLocation(latitude: region.center.latitude, longitude: region.center.longitude))
-            locationManager.stopMonitoring(for: region)
-            setupMonitorRegion()
-        }
-    }
-    
 }
 
 class BackgroundLocationManager :NSObject {
@@ -209,9 +63,13 @@ class BackgroundLocationManager :NSObject {
         }
         locationManager.startUpdatingLocation()
         NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.willTerminate), name: UIApplication.willTerminateNotification, object: nil)
     }
     @objc func applicationEnterBackground(){
         start()
+    }
+    @objc func willTerminate(){
+        stop()
     }
     func start(){
         if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
@@ -294,9 +152,13 @@ class ForegroundLocationManager :NSObject {
         }
         locationManager.startUpdatingLocation()
         NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.willTerminate), name: UIApplication.willTerminateNotification, object: nil)
     }
     @objc func applicationEnterForeground(){
         start()
+    }
+    @objc func willTerminate(){
+        stop()
     }
     func start(){
         if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
@@ -361,22 +223,6 @@ extension ForegroundLocationManager : CLLocationManagerDelegate {
         }
     }
     
-}
-
-open class Reachability {
-    class func isLocationServiceEnabled() {
-        if CLLocationManager.locationServicesEnabled() {
-            switch(CLLocationManager.authorizationStatus()) {
-            case .notDetermined, .restricted, .denied , .authorizedWhenInUse:
-                LocationAlert().showAlertLocation()
-            case .authorizedAlways :break
-            default:
-                print("Somethng error!")
-            }
-        } else {
-            LocationAlert().showAlertLocation()
-        }
-    }
 }
 
 open class LocationAlert {
@@ -462,28 +308,6 @@ final class UserLocation {
         self.lastTime = Date()
         self.lastLocation = self.location
         LocationTracking.shared.updateCurrentLocation(lat: self.location!.coordinate.latitude, lng: self.location!.coordinate.longitude, speed: Double(self.location!.speed))
-    }
-
-    // sharepreference đang lưu dạng { "trackings": [{"lat": "", "lng": "", "time": "", "speed": ""}] }
-    func updateLocationOffline(position:CLLocation?) {
-        var params:[Dictionary<String, Any>]?
-        if position != nil {
-            if position!.coordinate.latitude != 0 && position!.coordinate.longitude != 0 {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                params = [["lat":position!.coordinate.latitude,
-                               "lng":position!.coordinate.longitude,
-                               "time": formatter.string(from: Date()),
-                               "speed": position!.speed
-                 ]] as [Dictionary<String, Any>]
-            }
-        }
-        if let val = params {
-                uploadOffline(value: val[0])
-        }
-    }
-    func uploadOffline(value:Dictionary<String, Any>) {
-        LocationUpdate.shared.offLineMethodChannel?.invokeMethod("update_location_offline", arguments: value)
     }
 }
 

@@ -4,9 +4,7 @@ import UIKit
 public class SwiftTrackingLocationPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "tracking_location", binaryMessenger: registrar.messenger())
-    let offline_channel = FlutterMethodChannel(name: "tracking_location_offline", binaryMessenger: registrar.messenger())
     LocationUpdate.shared.methodChannel = channel
-    LocationUpdate.shared.offLineMethodChannel = offline_channel
     let instance = SwiftTrackingLocationPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
