@@ -63,9 +63,13 @@ class BackgroundLocationManager :NSObject {
         }
         locationManager.startUpdatingLocation()
         NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.willTerminate), name: UIApplication.willTerminateNotification, object: nil)
     }
     @objc func applicationEnterBackground(){
         start()
+    }
+    @objc func willTerminate(){
+        stop()
     }
     func start(){
         if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
@@ -148,9 +152,13 @@ class ForegroundLocationManager :NSObject {
         }
         locationManager.startUpdatingLocation()
         NotificationCenter.default.addObserver(self, selector: #selector(self.applicationEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.willTerminate), name: UIApplication.willTerminateNotification, object: nil)
     }
     @objc func applicationEnterForeground(){
         start()
+    }
+    @objc func willTerminate(){
+        stop()
     }
     func start(){
         if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
