@@ -21,10 +21,7 @@ import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.google.android.gms.location.LocationRequest.*
 import com.google.gson.Gson
-import com.google.gson.JsonArray
 import okhttp3.OkHttpClient
-import org.json.JSONArray
-import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -32,17 +29,15 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
-import kotlin.collections.ArrayList
 
 class LocationService : Service() {
 
     lateinit var mContext: Context
-
     private val KEY_SHARE_PREFS = "FlutterSharedPreferences"
-    private val url: String = "http://dev.api.ggigroup.org/api/"
 
     private lateinit var mRefs: SharedPreferences
     private lateinit var token: String
+    private lateinit var serverUrl: String
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val locationRequest: LocationRequest = create().apply {
@@ -81,12 +76,14 @@ class LocationService : Service() {
     private fun getPreference(context: Context?) {
         mRefs = context!!.getSharedPreferences(KEY_SHARE_PREFS, Context.MODE_PRIVATE)
         token = mRefs.getString("flutter.access_token","")!!
+        serverUrl = mRefs.getString("flutter.server_url","")!!
     }
 
     private fun sendLocation(map: Map<String, Any>){
+        val refreshToken  = mRefs.getString("flutter.refresh_token","")!!
+        val tokenAuthenticator = TokenAuthenticator(mRefs, serverUrl, refreshToken)
         val httpClient = OkHttpClient.Builder().addInterceptor { chain ->
             val original = chain.request()
-
             val requestBuilder = original
                 .newBuilder()
                 .addHeader("Content-Type", "application/json")
@@ -95,11 +92,16 @@ class LocationService : Service() {
 
             val request = requestBuilder.build()
             chain.proceed(request)
-        }.build()
-        val retrofit = Retrofit.Builder().baseUrl(url).addConverterFactory(GsonConverterFactory.create()).client(httpClient).build()
+        }.authenticator(tokenAuthenticator)
+         .build()
+        val retrofit = Retrofit.Builder()
+                               .baseUrl(serverUrl)
+                               .addConverterFactory(GsonConverterFactory.create())
+                               .client(httpClient)
+                               .build()
         if(isNetworkAvailable(context = mContext)){
             Log.e("TAG", "isNetworkAvailable")
-            Log.e("Send location url", url)
+            Log.e("Send location url", serverUrl)
             Log.e("Send location token", token)
             Log.e("Send location params", map.toString())
             val trackingOffline = mRefs.getString("flutter.tracking_offline","")!!
@@ -107,7 +109,6 @@ class LocationService : Service() {
                 var trackingOfflineRequestModel =  Gson().fromJson<TrackingOfflineRequestModel>(trackingOffline, TrackingOfflineRequestModel::class.java)
                 var model = TrackingOfflineItemRequestModel(lat = map["lat"]!!, lng = map["lng"]!!, time = map["time"]!!, speed = map["speed"]!!)
                 trackingOfflineRequestModel.trackings.add(model)
-
                 retrofit.create(Api::class.java).trackingOffline(trackingOfflineRequestModel)
                     .enqueue(object: retrofit2.Callback<ResponseModel>{
                         override fun onFailure(call: Call<ResponseModel>, t: Throwable) {
@@ -119,9 +120,13 @@ class LocationService : Service() {
 
                         @SuppressLint("CommitPrefEdits")
                         override fun onResponse(call: Call<ResponseModel>, response: Response<ResponseModel>) {
-                            mRefs.edit().apply {
-                                putString("flutter.tracking_offline","")
-                                apply()
+                            if(response.code() == 401){
+
+                            }else{
+                                mRefs.edit().apply {
+                                    putString("flutter.tracking_offline","")
+                                    apply()
+                                }
                             }
                         }
 
