@@ -23,7 +23,7 @@ class TokenAuthenticator(private val mRefs: SharedPreferences, private val url: 
             val refreshToken = refreshResult.data!!.token!!.refreshToken
             mRefs.edit().apply {
                 putString("flutter.access_token", accessToken)
-                putString("flutter.server_url", refreshToken)
+                putString("flutter.refresh_token", refreshToken)
                 apply()
             }
             // thuc hien request hien tai khi da lay duoc token moi
