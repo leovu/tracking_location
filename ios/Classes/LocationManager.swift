@@ -93,6 +93,7 @@ class BackgroundLocationManager :NSObject {
     }
     func sendLocationToServer(location:CLLocation){
         UserLocation.sharedInstance.location = location
+        UserLocation.sharedInstance.update()
     }
     func beginNewBackgroundTask(){
         if(LocationUpdate.shared.isStop)
@@ -182,6 +183,7 @@ class ForegroundLocationManager :NSObject {
     }
     func sendLocationToServer(location:CLLocation){
         UserLocation.sharedInstance.location = location
+        UserLocation.sharedInstance.update()
     }
     func beginNewForegroundTask(){
         if(LocationUpdate.shared.isStop)
@@ -314,7 +316,7 @@ final class UserLocation {
 class LocationTracking {
     static let shared = LocationTracking()
     func updateCurrentLocation(lat:Double,lng:Double,speed:Double) {
-        DispatchQueue.global(qos: .background).async {
+        DispatchQueue.main.async {
             LocationUpdate.shared.methodChannel?.invokeMethod("update_location", arguments: [
                 "lat":lat,
                 "lng":lng,
