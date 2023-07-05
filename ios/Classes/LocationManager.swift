@@ -218,7 +218,6 @@ class BackgroundLocationManager :NSObject {
     }
     func sendLocationToServer(location:CLLocation){
         UserLocation.sharedInstance.location = location
-        UserLocation.sharedInstance.updateLocationTerminate(location: location)
     }
     func beginNewBackgroundTask(){
         if(LocationUpdate.shared.isStop)
@@ -304,7 +303,6 @@ class ForegroundLocationManager :NSObject {
     }
     func sendLocationToServer(location:CLLocation){
         UserLocation.sharedInstance.location = location
-        UserLocation.sharedInstance.updateLocationTerminate(location: location)
     }
     func beginNewForegroundTask(){
         if(LocationUpdate.shared.isStop)
