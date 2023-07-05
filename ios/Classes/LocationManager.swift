@@ -104,43 +104,11 @@ class TerminatedLocationManager :NSObject {
         locationManager.stopMonitoringSignificantLocationChanges()
     }
     func sendLocationToServer(location:CLLocation){
-        updateLocation(location: location)
+        UserLocation.sharedInstance.updateLocationTerminate(location: location)
         UserLocation.sharedInstance.location = location
         UserLocation.sharedInstance.updateLocation()
     }
-    func updateLocation(location:CLLocation) {
-            if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
-                return
-            }
-            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                let params = ["lat":location.coordinate.latitude,
-                              "lng":location.coordinate.longitude,
-                              "time": formatter.string(from: Date()),
-                              "speed": location.speed
-                ] as Dictionary<String, Any>
-                var request = URLRequest(url: URL(string: "https://api.ggigroup.org/api/children/tracking")!)
-                request.httpMethod = "POST"
-                request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
-                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                let session = URLSession.shared
-                let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-                    print(response!)
-                    if let httpResponse = response as? HTTPURLResponse {
-                        if(httpResponse.statusCode == 401) {
-                           print("401")
-                           UserLocation.sharedInstance.refreshToken(completion: {
-                               UserLocation.sharedInstance.updateLocationOffline(position: location)
-                           })
-                        }
-                    }
-                })
-                task.resume()
-            }
-
-    }
+    
     func beginNewTerminatedTask(){
         if(LocationUpdate.shared.isStop)
         {
@@ -250,6 +218,7 @@ class BackgroundLocationManager :NSObject {
     }
     func sendLocationToServer(location:CLLocation){
         UserLocation.sharedInstance.location = location
+        UserLocation.sharedInstance.updateLocationTerminate(location: location)
     }
     func beginNewBackgroundTask(){
         if(LocationUpdate.shared.isStop)
@@ -335,6 +304,7 @@ class ForegroundLocationManager :NSObject {
     }
     func sendLocationToServer(location:CLLocation){
         UserLocation.sharedInstance.location = location
+        UserLocation.sharedInstance.updateLocationTerminate(location: location)
     }
     func beginNewForegroundTask(){
         if(LocationUpdate.shared.isStop)
@@ -477,6 +447,41 @@ final class UserLocation {
         self.lastTime = Date()
         self.lastLocation = self.location
         LocationTracking.shared.updateCurrentLocation(lat: self.location!.coordinate.latitude, lng: self.location!.coordinate.longitude, speed: Double(self.location!.speed))
+    }
+    
+    
+    func updateLocationTerminate(location:CLLocation) {
+            if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
+                return
+            }
+            if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                let params = ["lat":location.coordinate.latitude,
+                              "lng":location.coordinate.longitude,
+                              "time": formatter.string(from: Date()),
+                              "speed": location.speed
+                ] as Dictionary<String, Any>
+                var request = URLRequest(url: URL(string: "https://api.ggigroup.org/api/children/tracking")!)
+                request.httpMethod = "POST"
+                request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
+                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                let session = URLSession.shared
+                let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                    print(response!)
+                    if let httpResponse = response as? HTTPURLResponse {
+                        if(httpResponse.statusCode == 401) {
+                           print("401")
+                           refreshToken(completion: {
+                               updateLocationOffline(position: location)
+                           })
+                        }
+                    }
+                })
+                task.resume()
+            }
+
     }
 
     func updateLocationOffline(position:CLLocation?) {
