@@ -473,8 +473,8 @@ final class UserLocation {
                     if let httpResponse = response as? HTTPURLResponse {
                         if(httpResponse.statusCode == 401) {
                            print("401")
-                           refreshToken(completion: {
-                               updateLocationOffline(position: location)
+                           self.refreshToken(completion: {
+                               self.updateLocationOffline(position: location)
                            })
                         }
                     }
