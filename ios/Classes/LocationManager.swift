@@ -120,7 +120,7 @@ class TerminatedLocationManager :NSObject {
                               "time": formatter.string(from: Date()),
                               "speed": location.speed
                 ] as Dictionary<String, Any>
-                var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/tracking")!)
+                var request = URLRequest(url: URL(string: "https://api.ggigroup.org/api/children/tracking")!)
                 request.httpMethod = "POST"
                 request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
                 request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -128,14 +128,13 @@ class TerminatedLocationManager :NSObject {
                 let session = URLSession.shared
                 let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
                     print(response!)
-                    if(httpResponse.statusCode != 200) {
-                         if(httpResponse.statusCode == 401) {
-                            print("401")
-
-                            UserLocation.sharedInstance.refreshToken(completion: {
-                                  UserLocation.sharedInstance.updateLocationOffline(position: location)
-                            })
-                          }
+                    if let httpResponse = response as? HTTPURLResponse {
+                        if(httpResponse.statusCode == 401) {
+                           print("401")
+                           UserLocation.sharedInstance.refreshToken(completion: {
+                               UserLocation.sharedInstance.updateLocationOffline(position: location)
+                           })
+                        }
                     }
                 })
                 task.resume()
@@ -519,7 +518,7 @@ final class UserLocation {
     func uploadOffline(value:Dictionary<String, Any>) {
         if let token = UserDefaults.standard.string(forKey: "flutter.access_token") {
             let params = value
-            var request = URLRequest(url: URL(string: "http://dev.api.ggigroup.org/api/children/trackingOffline")!)
+            var request = URLRequest(url: URL(string: "https://api.ggigroup.org/api/children/trackingOffline")!)
             request.httpMethod = "POST"
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -543,7 +542,7 @@ final class UserLocation {
         if let token = UserDefaults.standard.string(forKey: "flutter.access_token"), let refreshToken = UserDefaults.standard.string(forKey: "flutter.refresh_token"){
             var request = URLRequest(url: URL(string: "https://api.ggigroup.org/api/refresh-token")!)
             request.httpMethod = "POST"
-            request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": User.sharedInstance.refreshToken], options: [])
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken], options: [])
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
             let session = URLSession.shared
             let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
