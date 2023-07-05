@@ -17,7 +17,7 @@ class TrackingLocation {
     final int result = await channel.invokeMethod('start');
     return result;
   }
-  static static saveOffline(dynamic value) {
+  static saveOffline(dynamic value) {
     channel.invokeMethod('saveOffline',value);
   }
   static Future<int>stop() async  {
