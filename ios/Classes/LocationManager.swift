@@ -82,13 +82,6 @@ class TerminatedLocationManager :NSObject {
         } else {
             self.locationManager.requestAlwaysAuthorization()
         }
-        // DispatchQueue.background(background: {
-        //     if(CLLocationManager.authorizationStatus() == CLAuthorizationStatus.authorizedAlways){
-        //         self.locationManager.startMonitoringSignificantLocationChanges()
-        //     } else {
-        //         self.locationManager.requestAlwaysAuthorization()
-        //     }
-        // }, completion:{})
     }
     func setupMonitorRegion(){
         let lastLatitude =  UserDefaults.standard.double(forKey: "flutter.last_latitude")
@@ -116,10 +109,6 @@ class TerminatedLocationManager :NSObject {
         UserLocation.sharedInstance.updateLocation()
     }
     func updateLocation(location:CLLocation) {
-//         if NetworkReachability.isConnectedToNetwork() {
-            // Nếu shared có thì  + với location call api uploadOffline
-            // Nếu shared không có thì call api api children tracking
-//             UserLocation.sharedInstance.updateLocationOffline(position: nil)
             if location.coordinate.latitude == 0 && location.coordinate.longitude == 0 {
                 return
             }
@@ -139,20 +128,18 @@ class TerminatedLocationManager :NSObject {
                 let session = URLSession.shared
                 let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
                     print(response!)
-                    do {
-                        let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                        print(json)
-                    } catch {
-                        print("error")
+                    if(httpResponse.statusCode != 200) {
+                         if(httpResponse.statusCode == 401) {
+                            print("401")
+
+                            UserLocation.sharedInstance.refreshToken(completion: {
+                                  UserLocation.sharedInstance.updateLocationOffline(position: location)
+                            })
+                          }
                     }
                 })
                 task.resume()
             }
-//         }
-//         else {
-//             // save
-//             UserLocation.sharedInstance.updateLocationOffline(position: location)
-//         }
 
     }
     func beginNewTerminatedTask(){
@@ -493,7 +480,6 @@ final class UserLocation {
         LocationTracking.shared.updateCurrentLocation(lat: self.location!.coordinate.latitude, lng: self.location!.coordinate.longitude, speed: Double(self.location!.speed))
     }
 
-    // sharepreference đang lưu dạng { "trackings": [{"lat": "", "lng": "", "time": "", "speed": ""}] }
     func updateLocationOffline(position:CLLocation?) {
         var params:[Dictionary<String, Any>]?
         if position != nil {
@@ -552,6 +538,33 @@ final class UserLocation {
             task.resume()
         }
     }
+    
+    func refreshToken(completion: () -> Void) {
+        if let token = UserDefaults.standard.string(forKey: "flutter.access_token"), let refreshToken = UserDefaults.standard.string(forKey: "flutter.refresh_token"){
+            var request = URLRequest(url: URL(string: "https://api.ggigroup.org/api/refresh-token")!)
+            request.httpMethod = "POST"
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": User.sharedInstance.refreshToken], options: [])
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            let session = URLSession.shared
+            let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
+                if let httpResponse = response as? HTTPURLResponse {
+                    if(httpResponse.statusCode == 200) {
+                        guard let json = (try? JSONSerialization.jsonObject(with: data!)) as? [String : Any] else {
+                            return
+                        }
+                        guard let json_data = json["data"] as? [String : Any] else {
+                            return
+                        }
+                        UserDefaults.standard.set(json_data["access_token"] as! String, forKey: "flutter.access_token")
+                        UserDefaults.standard.set(json_data["refresh_token"], forKey: "flutter.refresh_token")
+                        UserDefaults.standard.set(json_data["expired_at"], forKey: "flutter.expire_token_time")
+                    }
+                }
+            })
+            task.resume()
+        }
+            
+   }
 }
 
 class LocationTracking {
