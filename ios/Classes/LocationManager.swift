@@ -279,7 +279,7 @@ final class UserLocation {
     var location:CLLocation?
     var lastLocation:CLLocation?
     var lastTime:Date?
-    var timeCallUpdateLocation = 30.0
+    var timeCallUpdateLocation = 5.0
     private init() { }
     func start(){
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
@@ -300,7 +300,7 @@ final class UserLocation {
             else {
                 let difference = Calendar.current.dateComponents([.second], from: self.lastTime!, to: Date())
                 let duration = difference.second ?? 0
-                if duration >= 30 {
+                if duration >= timeCallUpdateLocation {
                     self.updateLocation()
                 }
             }
