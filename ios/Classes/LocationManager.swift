@@ -300,7 +300,7 @@ final class UserLocation {
             else {
                 let difference = Calendar.current.dateComponents([.second], from: self.lastTime!, to: Date())
                 let duration = difference.second ?? 0
-                if duration >= timeCallUpdateLocation {
+                if duration >= 5 {
                     self.updateLocation()
                 }
             }
