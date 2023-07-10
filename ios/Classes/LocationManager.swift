@@ -16,9 +16,12 @@ class LocationUpdate {
     func tracking(action:Bool) {
         self.isStop = action
         if action == true {
-            locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
-            locationManager.activityType = .other;
-            locationManager.distanceFilter = kCLDistanceFilterNone;
+            locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            locationManager.showsBackgroundLocationIndicator = true
+            locationManager.distanceFilter = kCLDistanceFilterNone
+            locationManager.activityType = .automotiveNavigation
+            locationManager.allowsBackgroundLocationUpdates = true
+            locationManager.pausesLocationUpdatesAutomatically = false
             if #available(iOS 9, *){
                 locationManager.allowsBackgroundLocationUpdates = true
             }
@@ -55,9 +58,12 @@ class BackgroundLocationManager :NSObject {
     private override init(){
         super.init()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
-        locationManager.activityType = .other;
-        locationManager.distanceFilter = kCLDistanceFilterNone;
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.showsBackgroundLocationIndicator = true
+        locationManager.distanceFilter = kCLDistanceFilterNone
+        locationManager.activityType = .automotiveNavigation
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
         if #available(iOS 9, *){
             locationManager.allowsBackgroundLocationUpdates = true
         }
@@ -145,9 +151,12 @@ class ForegroundLocationManager :NSObject {
     private override init(){
         super.init()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
-        locationManager.activityType = .other;
-        locationManager.distanceFilter = kCLDistanceFilterNone;
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.showsBackgroundLocationIndicator = true
+        locationManager.distanceFilter = kCLDistanceFilterNone
+        locationManager.activityType = .automotiveNavigation
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
         if #available(iOS 9, *){
             locationManager.allowsBackgroundLocationUpdates = true
         }
