@@ -25,6 +25,12 @@ Tracking Location Flutter project.
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Ứng dụng cần bạn chấp nhận cho truy cập vị trí để sử dụng chức năng hỗ trợ vị trí của bạn</string>
 
+    ......
+    <key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+
 ## Flutter
     import 'package:tracking_location/tracking_location.dart';
 
