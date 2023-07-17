@@ -16,6 +16,7 @@ Tracking Location Flutter project.
     </application>
 
 
+
 ## iOS
 
     <key>NSLocationWhenInUseUsageDescription</key>
